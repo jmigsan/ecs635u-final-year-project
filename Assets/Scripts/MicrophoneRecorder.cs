@@ -20,7 +20,7 @@ public class MicrophoneRecorder : MonoBehaviour
 
     void Update()
     {
-        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        if (Keyboard.current.mKey.wasPressedThisFrame)
         {
             ToggleRecording();
         }

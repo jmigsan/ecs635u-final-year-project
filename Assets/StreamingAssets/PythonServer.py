@@ -4,12 +4,15 @@
 # poetry add torch torchvision torchaudio --source pytorch-gpu
 
 from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse
 import whisper
 import tempfile
 import os
 import torch
 from pydantic import BaseModel
 from llama_cpp import Llama
+import edge_tts
+import io
 
 # --- Initialise ---
 
@@ -87,6 +90,21 @@ async def ask_llm(query: str) -> LlmResponse:
     conversation_history.append({"role": "assistant", "content": response_content})
 
     return LlmResponse({"llm_response": response_content})
+
+@app.post("/tts")
+async def npc_speak(words: str):
+    audio_buffer = io.BytesIO()
+
+    communicator = edge_tts.Communicate(words, voice="fil-PH-BlessicaNeural")
+    await communicator.save(audio_buffer)
+
+    audio_buffer.seek(0)
+
+    return StreamingResponse(
+        audio_buffer,
+        media_type="audio/mpeg",
+        headers={"Content-Disposition": "attachment;filename=speech.mp3"}
+    )
 
 if __name__ == "__main__":
     import uvicorn
