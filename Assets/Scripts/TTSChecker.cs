@@ -9,6 +9,7 @@ public class TTSChecker : MonoBehaviour
     {
         if (Keyboard.current.tKey.wasPressedThisFrame)
         {
+            Debug.Log("Playing TTS...")
             StartCoroutine(PlayTTS());
         }
     }
