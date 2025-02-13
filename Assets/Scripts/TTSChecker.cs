@@ -34,16 +34,10 @@ public class TTSChecker : MonoBehaviour
         WWWForm form = new WWWForm();
         form.AddField("words", "Kamusta ka. Masaya ka ba?");
 
-        using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip("http://127.0.0.1:8000/tts", AudioType.MPEG))
+        using (UnityWebRequest www = UnityWebRequest.Post("http://127.0.0.1:8000/tts", form))
         {
-            www.method = "POST";
-            www.uploadHandler = new UploadHandlerRaw(form.data);
             www.downloadHandler = new DownloadHandlerAudioClip(null, AudioType.MPEG);
-
-            var operation = www.SendWebRequest();
-            while (!operation.isDone)
-                await Task.Yield();
-
+            await www.SendWebRequest();
             return DownloadHandlerAudioClip.GetContent(www);
         }
     }
