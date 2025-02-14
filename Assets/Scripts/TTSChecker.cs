@@ -15,9 +15,9 @@ public class TTSChecker : MonoBehaviour
         }
     }
 
-    class TtsQuery
+    public class TtsQuery
     {
-        string words;
+        public string words;
     }
 
     IEnumerator PlayTTS()
