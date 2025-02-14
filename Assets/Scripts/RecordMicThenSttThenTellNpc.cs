@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
 
-public class MicrophoneRecorder : MonoBehaviour
+public class RecordMicThenSttThenTellNpc : MonoBehaviour
 {
     // str get mic
     string selectedMicrophone = Microphone.devices[0];
@@ -12,51 +12,17 @@ public class MicrophoneRecorder : MonoBehaviour
     AudioClip recordedClip;
     int recordingStartTime;
     LayerMask raycastLayerMask = LayerMask.GetMask("Character");
-    PlayerInputActions playerInputActions;
-    InputAction holdKeyAction;
+    RaycastHit? thingRaycastHit;
+    RaycastHit NpcImTalkingTo;
 
-    void Awake()
+    void Start() 
     {
-        playerInputActions = new PlayerInputActions(); // Create instance of the generated class
-        holdKeyAction = playerInputActions.Player.HoldKey; // Get the "HoldKey" action from the "Player" Action Map
+        XRInputManager.Instance.OnRecordButtonPressed += HandleRecordButton;
     }
 
-    void OnEnable() // Initialize and Enable in OnEnable
+    void OnDestroy()
     {
-        playerInputActions.Player.Enable(); // Enable the Action Map when script is enabled
-        playerInput.actions["Action"].performed += HandleAction;
-    }
-
-    void OnDisable()
-    {
-        playerInputActions.Player.Disable(); // Disable the Action Map when the script is disabled
-    }
-
-    // update
-    void Update()
-    {
-        // if m pressed
-        if (Keyboard.current.mKey.wasPressedThisFrame)
-        {
-            ToggleRecording();
-        }
-
-        if (holdKeyAction.IsPressed())
-        {
-
-        }
-    }
-
-    void ToggleRecording() 
-    {
-        if (!isRecording)
-        {
-            StartRecording();
-        }
-        else
-        {
-            StopRecording();
-        }
+        XRInputManager.Instance.OnRecordButtonPressed -= HandleRecordButton;
     }
     
     void StartRecording() 
@@ -69,7 +35,7 @@ public class MicrophoneRecorder : MonoBehaviour
         isRecording = true;
     }
 
-    void StopRecording()
+    string StopRecordingAndReturnTranscription()
     {
         Debug.Log("stopping recording");
 
@@ -87,7 +53,19 @@ public class MicrophoneRecorder : MonoBehaviour
 
         recordedClip = trimmedClip;
 
-        StartCoroutine(SendWavToStt());
+        string transcriptionResult;
+
+        StartCoroutine(SendWavToStt(transcription => 
+        {
+            if (transcription != null)
+            {
+                // Do something with the transcription here
+                Debug.Log("Processing: " + transcription);
+                transcriptionResult = transcription;
+            }
+        }));
+
+        return transcriptionResult;
     }
 
     // send to wav
@@ -125,7 +103,7 @@ public class MicrophoneRecorder : MonoBehaviour
     }
 
     // send to stt
-    IEnumerator SendWavToStt() 
+    IEnumerator SendWavToStt(Action<string> onTranscriptionReceived) 
     {
         byte[] wavData = ClipToWav(recordedClip);
 
@@ -139,10 +117,9 @@ public class MicrophoneRecorder : MonoBehaviour
             // receive text back
             string transcription = www.downloadHandler.text;
             Debug.Log($"Transcribed text: {transcription}");
+            onTranscriptionReceived?.Invoke(transcription); // Pass result
         }
     }
-
-    var thingsRaycastHit;
 
     // check if anyone is in front of you, probs a ray
     void FixedUpdate() 
@@ -153,8 +130,45 @@ public class MicrophoneRecorder : MonoBehaviour
             Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * hit.distance, Color.yellow); 
             Debug.Log("Did Hit");
 
-            thingsRaycastHit = hit;
+            thingRaycastHit = hit;
+
+            if (hit.collider.gameObject.tag == "NPC")
+            {
+                Debug.Log("Raycast hit an NPC!");
+                // Your NPC specific logic here (e.g., interact with NPC)
+            }
+        }
+        else
+        {
+            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * 10, Color.white);
+            thingRaycastHit = null;
         }
     }
+
+    void HandleRecordButton(bool isPressed, bool isLeftHand)
+    {
+        if (!raycastHitSomething)
+        {
+            Debug.Log("Raycast sees nothing")
+            return
+        }
+
+        if (isPressed)
+        {
+            StartRecording();
+            NpcImTalkingTo = thingRaycastHit;
+        }
+        else 
+        {
+            string transcription = StopRecordingAndReturnTranscription();
+            TellNpcWhatISaid(transcription);
+        }
+    }
+
     // tell that person what you said
+    void TellNpcWhatISaid(string words)
+    {
+        NpcImTalkingTo.collider.GetComponent<NPCController>();
+    }
+
 }
