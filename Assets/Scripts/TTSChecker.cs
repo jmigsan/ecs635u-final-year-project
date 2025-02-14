@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
 using System.Collections;
+using System.Text;
 
 public class TTSChecker : MonoBehaviour
 {
@@ -9,36 +10,36 @@ public class TTSChecker : MonoBehaviour
     {
         if (Keyboard.current.tKey.wasPressedThisFrame)
         {
-            Debug.Log("Playing TTS...")
+            Debug.Log("Playing TTS...");
             StartCoroutine(PlayTTS());
         }
     }
-    
-    IEnumerator PlayTTS()
+
+    class TtsQuery
     {
-        AudioSource audioSource = GetComponent<AudioSource>();
-        Task<AudioClip> ttsTask = GetTTS();
-        
-        while (!ttsTask.IsCompleted)
-        {
-            yield return null;
-        }
-        
-        AudioClip ttsClip = ttsTask.Result;
-        audioSource.clip = ttsClip;
-        audioSource.Play();
+        string words;
     }
 
-    async Task<AudioClip> GetTTS()
+    IEnumerator PlayTTS()
     {
-        WWWForm form = new WWWForm();
-        form.AddField("words", "Kamusta ka. Masaya ka ba?");
+        string wordsToSend = "Kamusta ka. Masaya ka ba?"; 
 
-        using (UnityWebRequest www = UnityWebRequest.Post("http://127.0.0.1:8000/tts", form))
+        TtsQuery query = new TtsQuery { words = wordsToSend };
+        string jsonQuery = JsonUtility.ToJson(query);
+
+        using (UnityWebRequest www = new UnityWebRequest("http://127.0.0.1:8000/tts", "POST"))
         {
-            www.downloadHandler = new DownloadHandlerAudioClip(null, AudioType.MPEG);
-            await www.SendWebRequest();
-            return DownloadHandlerAudioClip.GetContent(www);
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonQuery);
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerAudioClip(www.url, AudioType.MPEG);
+            www.SetRequestHeader("Content-Type", "application/json");
+
+            yield return www.SendWebRequest();
+
+            AudioSource audioSource = GetComponent<AudioSource>();
+            AudioClip audioClip = DownloadHandlerAudioClip.GetContent(www);
+            audioSource.clip = audioClip;
+            audioSource.Play();
         }
     }
 }

@@ -4,7 +4,7 @@
 # poetry add torch torchvision torchaudio --source pytorch-gpu
 
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 import whisper
 import tempfile
 import os
@@ -21,9 +21,6 @@ app = FastAPI()
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = whisper.load_model("base", download_root="E:\Code\AppData\whisper").to(device)
 
-llm = load_model(r"E:\Code\AppData\LM-Studio\Models\hugging-quants\Llama-3.2-3B-Instruct-Q8_0-GGUF\llama-3.2-3b-instruct-q8_0.gguf")
-conversation_history = []
-
 # --- Pydantic classes ---
 
 class TranscribeResponse(BaseModel):
@@ -31,6 +28,9 @@ class TranscribeResponse(BaseModel):
 
 class LlmResponse(BaseModel):
     llm_response: str
+
+class TtsQuery(BaseModel):
+    words: str
 
 # --- Helper functions ---
 
@@ -54,6 +54,11 @@ def format_prompt(user_input, history):
     prompt += f"User: {user_input}\nAssistant: [/INST]"
     return prompt
 
+# --- LLM initialise ---
+
+# llm = load_model(r"E:\Code\AppData\LM-Studio\Models\hugging-quants\Llama-3.2-3B-Instruct-Q8_0-GGUF\llama-3.2-3b-instruct-q8_0.gguf")
+# conversation_history = []
+
 # --- API endpoints ---
 
 @app.post("/transcribe")
@@ -71,40 +76,42 @@ async def transcribe_audio(audio: UploadFile = File(...)) -> TranscribeResponse:
     
     return TranscribeResponse({"transcription": result["text"]})
 
-@app.post("/llm")
-async def ask_llm(query: str) -> LlmResponse:
-    full_prompt = format_prompt(query, conversation_history)
+# @app.post("/llm")
+# async def ask_llm(query: str) -> LlmResponse:
+#     full_prompt = format_prompt(query, conversation_history)
 
-    response = llm.create_chat_completion(
-        messages=[{"role": "user", "content": full_prompt}],
-        temperature=0.7,
-        max_tokens=256,
-        stop=["User:", "Assistant:"],
-        stream=False
-    )
+#     response = llm.create_chat_completion(
+#         messages=[{"role": "user", "content": full_prompt}],
+#         temperature=0.7,
+#         max_tokens=256,
+#         stop=["User:", "Assistant:"],
+#         stream=False
+#     )
 
-    response_content = response['choices'][0]['message']['content'].strip()
-    print(f"Assistant: {response_content}")
+#     response_content = response['choices'][0]['message']['content'].strip()
+#     print(f"Assistant: {response_content}")
     
-    conversation_history.append({"role": "user", "content": query})
-    conversation_history.append({"role": "assistant", "content": response_content})
+#     conversation_history.append({"role": "user", "content": query})
+#     conversation_history.append({"role": "assistant", "content": response_content})
 
-    return LlmResponse({"llm_response": response_content})
+#     return LlmResponse({"llm_response": response_content})
 
 @app.post("/tts")
-async def npc_speak(words: str):
-    audio_buffer = io.BytesIO()
+async def npc_speak(ttsQuery: TtsQuery):
+    communicate = edge_tts.Communicate(ttsQuery.words, "fil-PH-BlessicaNeural")
+    audio_stream = io.BytesIO()
 
-    communicator = edge_tts.Communicate(words, voice="fil-PH-BlessicaNeural")
-    await communicator.save(audio_buffer)
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_stream.write(chunk["data"])
 
-    audio_buffer.seek(0)
+    audio_stream.seek(0)
 
-    return StreamingResponse(
-        audio_buffer,
-        media_type="audio/mpeg",
-        headers={"Content-Disposition": "attachment;filename=speech.mp3"}
-    )
+    return StreamingResponse(audio_stream, media_type="audio/mpeg")
+
+@app.post("/test")
+async def pppp(ttsQuery: TtsQuery):
+    return ttsQuery.words
 
 if __name__ == "__main__":
     import uvicorn
