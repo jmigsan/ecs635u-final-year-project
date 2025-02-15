@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.IO;
 using UnityEngine;
@@ -11,7 +12,7 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
     bool isRecording = false;
     AudioClip recordedClip;
     int recordingStartTime;
-    LayerMask raycastLayerMask = LayerMask.GetMask("Character");
+    LayerMask raycastLayerMask = LayerMask.GetMask("NPC");
     RaycastHit? thingRaycastHit;
     RaycastHit NpcImTalkingTo;
 
@@ -35,7 +36,7 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
         isRecording = true;
     }
 
-    string StopRecordingAndReturnTranscription()
+    void StopRecording()
     {
         Debug.Log("stopping recording");
 
@@ -53,23 +54,11 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
 
         recordedClip = trimmedClip;
 
-        string transcriptionResult;
-
-        StartCoroutine(SendWavToStt(transcription => 
-        {
-            if (transcription != null)
-            {
-                // Do something with the transcription here
-                Debug.Log("Processing: " + transcription);
-                transcriptionResult = transcription;
-            }
-        }));
-
-        return transcriptionResult;
+        StartCoroutine(SendWavToStt());
     }
 
     // send to wav
-    void ClipToWav(AudioClip clip)
+    byte[] ClipToWav(AudioClip clip)
     {
         float[] samples = new float[clip.samples];
         clip.GetData(samples, 0);
@@ -103,7 +92,7 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
     }
 
     // send to stt
-    IEnumerator SendWavToStt(Action<string> onTranscriptionReceived) 
+    IEnumerator SendWavToStt() 
     {
         byte[] wavData = ClipToWav(recordedClip);
 
@@ -117,7 +106,7 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
             // receive text back
             string transcription = www.downloadHandler.text;
             Debug.Log($"Transcribed text: {transcription}");
-            onTranscriptionReceived?.Invoke(transcription); // Pass result
+            TellNpcWhatISaid(transcription); // This is in a weird spot. I don't like it. I should refactor this code. Be better organised.
         }
     }
 
@@ -135,7 +124,6 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
             if (hit.collider.gameObject.tag == "NPC")
             {
                 Debug.Log("Raycast hit an NPC!");
-                // Your NPC specific logic here (e.g., interact with NPC)
             }
         }
         else
@@ -147,28 +135,36 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
 
     void HandleRecordButton(bool isPressed, bool isLeftHand)
     {
-        if (!raycastHitSomething)
-        {
-            Debug.Log("Raycast sees nothing")
-            return
-        }
-
         if (isPressed)
         {
+            if (!thingRaycastHit.HasValue) 
+            {
+                Debug.Log("Raycast sees nothing");
+                return;
+            }
+
+            if (!thingRaycastHit.Value.collider.CompareTag("NPC"))
+            {
+                Debug.Log("Raycast sees no npcs");
+                return;
+            }
+
             StartRecording();
-            NpcImTalkingTo = thingRaycastHit;
+            NpcImTalkingTo = (RaycastHit)thingRaycastHit; // I already checked if it wasn't null, so this should be fine.
         }
-        else 
+        else
         {
-            string transcription = StopRecordingAndReturnTranscription();
-            TellNpcWhatISaid(transcription);
+            if (isRecording)
+            {
+                StopRecording();
+            }
         }
     }
 
     // tell that person what you said
     void TellNpcWhatISaid(string words)
     {
-        NpcImTalkingTo.collider.GetComponent<NPCController>();
+        NpcController npc = NpcImTalkingTo.collider.GetComponent<NpcController>();
+        npc.Tell(words);
     }
-
 }

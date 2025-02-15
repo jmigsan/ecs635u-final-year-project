@@ -32,6 +32,9 @@ class LlmResponse(BaseModel):
 class TtsQuery(BaseModel):
     words: str
 
+class NpcQuery(BaseModel):
+    query: str
+
 # --- Helper functions ---
 
 def load_model(model_path):
@@ -56,8 +59,8 @@ def format_prompt(user_input, history):
 
 # --- LLM initialise ---
 
-# llm = load_model(r"E:\Code\AppData\LM-Studio\Models\hugging-quants\Llama-3.2-3B-Instruct-Q8_0-GGUF\llama-3.2-3b-instruct-q8_0.gguf")
-# conversation_history = []
+llm = load_model(r"E:\Code\AppData\LM-Studio\Models\hugging-quants\Llama-3.2-3B-Instruct-Q8_0-GGUF\llama-3.2-3b-instruct-q8_0.gguf")
+conversation_history = []
 
 # --- API endpoints ---
 
@@ -74,27 +77,29 @@ async def transcribe_audio(audio: UploadFile = File(...)) -> TranscribeResponse:
     
     os.unlink(temp_name)
     
-    return TranscribeResponse({"transcription": result["text"]})
+    return TranscribeResponse(transcription = result["text"])
 
-# @app.post("/llm")
-# async def ask_llm(query: str) -> LlmResponse:
-#     full_prompt = format_prompt(query, conversation_history)
+@app.post("/llm")
+async def ask_llm(npcQuery: NpcQuery) -> LlmResponse:
+    full_prompt = format_prompt(npcQuery.query, conversation_history)
 
-#     response = llm.create_chat_completion(
-#         messages=[{"role": "user", "content": full_prompt}],
-#         temperature=0.7,
-#         max_tokens=256,
-#         stop=["User:", "Assistant:"],
-#         stream=False
-#     )
+    response = llm.create_chat_completion(
+        messages=[{"role": "user", "content": full_prompt}],
+        temperature=0.7,
+        max_tokens=256,
+        stop=["User:", "Assistant:"],
+        stream=False
+    )
 
-#     response_content = response['choices'][0]['message']['content'].strip()
-#     print(f"Assistant: {response_content}")
+    response_content = response['choices'][0]['message']['content'].strip()
+    print(f"Assistant: {response_content}")
     
-#     conversation_history.append({"role": "user", "content": query})
-#     conversation_history.append({"role": "assistant", "content": response_content})
+    conversation_history.append({"role": "user", "content": npcQuery.query})
+    conversation_history.append({"role": "assistant", "content": response_content})
 
-#     return LlmResponse({"llm_response": response_content})
+    print(LlmResponse(llm_response = response_content), conversation_history)
+
+    return LlmResponse(llm_response = response_content)
 
 @app.post("/tts")
 async def npc_speak(ttsQuery: TtsQuery):
@@ -110,8 +115,9 @@ async def npc_speak(ttsQuery: TtsQuery):
     return StreamingResponse(audio_stream, media_type="audio/mpeg")
 
 @app.post("/test")
-async def pppp(ttsQuery: TtsQuery):
-    return ttsQuery.words
+async def pppp(npcQuery: NpcQuery):
+    print(npcQuery.query)
+    return npcQuery.query
 
 if __name__ == "__main__":
     import uvicorn
