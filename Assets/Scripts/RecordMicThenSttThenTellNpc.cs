@@ -8,22 +8,26 @@ using UnityEngine.Networking;
 public class RecordMicThenSttThenTellNpc : MonoBehaviour
 {
     // str get mic
-    string selectedMicrophone = Microphone.devices[0];
+    string selectedMicrophone;
     bool isRecording = false;
     AudioClip recordedClip;
     int recordingStartTime;
-    LayerMask raycastLayerMask = LayerMask.GetMask("NPC");
+    LayerMask raycastLayerMask;
     RaycastHit? thingRaycastHit;
     RaycastHit NpcImTalkingTo;
 
     void Start() 
     {
-        XRInputManager.Instance.OnRecordButtonPressed += HandleRecordButton;
+        selectedMicrophone = Microphone.devices[0];
+        Debug.Log(selectedMicrophone);
+        raycastLayerMask = LayerMask.GetMask("NPC");
+        
+        XRInputManager.Instance.RecordButtonPressed += HandleRecordButton;
     }
 
     void OnDestroy()
     {
-        XRInputManager.Instance.OnRecordButtonPressed -= HandleRecordButton;
+        XRInputManager.Instance.RecordButtonPressed -= HandleRecordButton;
     }
     
     void StartRecording() 
@@ -133,7 +137,7 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
         }
     }
 
-    void HandleRecordButton(bool isPressed, bool isLeftHand)
+    void HandleRecordButton(bool isPressed)
     {
         if (isPressed)
         {
