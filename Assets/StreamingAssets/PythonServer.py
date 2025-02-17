@@ -48,7 +48,7 @@ def load_model(model_path):
     return llm
 
 def format_prompt(user_input, history):
-    system_prompt = "You are a helpful AI assistant. Respond conversationally."
+    system_prompt = "You are a helpful AI assistant that communicates clearly and directly, provides accurate information while acknowledging uncertainty, thinks through problems step-by-step, engages naturally in conversation while staying focused on the task at hand, maintains appropriate boundaries, and aims to be genuinely useful to users while avoiding potential harm."
     prompt = f"[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n"
     
     for msg in history[-5:]:  
@@ -103,7 +103,8 @@ async def ask_llm(npcQuery: NpcQuery) -> LlmResponse:
 
 @app.post("/tts")
 async def npc_speak(ttsQuery: TtsQuery):
-    communicate = edge_tts.Communicate(ttsQuery.words, "fil-PH-BlessicaNeural")
+    # communicate = edge_tts.Communicate(ttsQuery.words, "fil-PH-BlessicaNeural")
+    communicate = edge_tts.Communicate(ttsQuery.words, "en-GB-SoniaNeural")
     audio_stream = io.BytesIO()
 
     async for chunk in communicate.stream():

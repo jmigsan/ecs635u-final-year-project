@@ -13,13 +13,14 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
     AudioClip recordedClip;
     int recordingStartTime;
     LayerMask raycastLayerMask;
-    RaycastHit? thingRaycastHit;
+    RaycastHit thingRaycastHit;
     RaycastHit NpcImTalkingTo;
 
     void Start() 
     {
         selectedMicrophone = Microphone.devices[0];
         Debug.Log(selectedMicrophone);
+
         raycastLayerMask = LayerMask.GetMask("NPC");
         
         XRInputManager.Instance.RecordButtonPressed += HandleRecordButton;
@@ -95,6 +96,11 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
         }
     }
 
+    public class TranscriptionResponse
+    {
+        public string transcription;
+    }
+
     // send to stt
     IEnumerator SendWavToStt() 
     {
@@ -110,7 +116,8 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
             // receive text back
             string transcription = www.downloadHandler.text;
             Debug.Log($"Transcribed text: {transcription}");
-            TellNpcWhatISaid(transcription); // This is in a weird spot. I don't like it. I should refactor this code. Be better organised.
+            TranscriptionResponse data = JsonUtility.FromJson<TranscriptionResponse>(transcription);
+            TellNpcWhatISaid(data.transcription); // This is in a weird spot. I don't like it. I should refactor this code. Be better organised.
         }
     }
 
@@ -121,19 +128,14 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
         if (Physics.Raycast(transform.position, transform.TransformDirection(Vector3.forward), out hit, 10, raycastLayerMask))
         { 
             Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * hit.distance, Color.yellow); 
-            Debug.Log("Did Hit");
+            // Debug.Log("Did Hit");
 
             thingRaycastHit = hit;
-
-            if (hit.collider.gameObject.tag == "NPC")
-            {
-                Debug.Log("Raycast hit an NPC!");
-            }
         }
         else
         {
             Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * 10, Color.white);
-            thingRaycastHit = null;
+            thingRaycastHit = hit;
         }
     }
 
@@ -141,20 +143,11 @@ public class RecordMicThenSttThenTellNpc : MonoBehaviour
     {
         if (isPressed)
         {
-            if (!thingRaycastHit.HasValue) 
+            if (thingRaycastHit.collider != null)
             {
-                Debug.Log("Raycast sees nothing");
-                return;
+                NpcImTalkingTo = thingRaycastHit;
+                StartRecording();
             }
-
-            if (!thingRaycastHit.Value.collider.CompareTag("NPC"))
-            {
-                Debug.Log("Raycast sees no npcs");
-                return;
-            }
-
-            StartRecording();
-            NpcImTalkingTo = (RaycastHit)thingRaycastHit; // I already checked if it wasn't null, so this should be fine.
         }
         else
         {
