@@ -47,7 +47,7 @@ public class NpcController : MonoBehaviour
 
     public class LlmResponse
     {
-        public string response;
+        public string llm_response;
     }
 
     public class AskLlmResponse
@@ -71,9 +71,9 @@ public class NpcController : MonoBehaviour
 
             string jsonResponse = www.downloadHandler.text;
             LlmResponse llmResponse = JsonUtility.FromJson<LlmResponse>(jsonResponse);
-            Debug.Log("LLM Response: " + llmResponse.response);
+            Debug.Log("LLM Response: " + llmResponse.llm_response);
 
-            askLlmResponse.response = llmResponse.response;
+            askLlmResponse.response = llmResponse.llm_response;
         }
     }
 
@@ -117,7 +117,7 @@ public class NpcController : MonoBehaviour
         if (Physics.Raycast(transform.position, transform.TransformDirection(Vector3.forward), out hit, 10, npcLayerMask))
         { 
             Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * hit.distance, Color.yellow);
-            BumpedIntoAnNpc(hit.collider);
+            // BumpedIntoAnNpc(hit.collider); Not using rn.
         }
         else
         {
@@ -125,27 +125,30 @@ public class NpcController : MonoBehaviour
         }
     }
 
-    void BumpedIntoAnNpc(Collider other)
-    {
-        if (GetInstanceID() < other.GetInstanceID())
-        {
-            return;
-        }
+    // ----
+    // Old Head
+    // ----
+    // void BumpedIntoAnNpc(Collider other)
+    // {
+    //     if (GetInstanceID() < other.GetInstanceID())
+    //     {
+    //         return;
+    //     }
 
-        NpcController otherNpc = other.GetComponent<NpcController>();
+    //     NpcController otherNpc = other.GetComponent<NpcController>();
 
-        string npcConversationHistory = "Sure. Let's go get some coffee.";
-        string npcLocation = "Bad Moon Coffee Shop"; //Replace this with something that gets set in the Start() that checks the scene name or a scene manager or something.
-        string npcThoughtProcessPrompt = $"You are {npcName}. This is your character profile: {npcCharacterProfile}. This is past your past conversation history {npcConversationHistory}. You are in {npcLocation}. You are talking to {otherNpc.npcName}. This is their character profile: {otherNpc.npcCharacterProfile}. Say something appropriate, natural, with respect to your previous conversations, and your goal as a character.";
+    //     string npcConversationHistory = "Sure. Let's go get some coffee.";
+    //     string npcLocation = "Bad Moon Coffee Shop"; //Replace this with something that gets set in the Start() that checks the scene name or a scene manager or something.
+    //     string npcThoughtProcessPrompt = $"You are {npcName}. This is your character profile: {npcCharacterProfile}. This is past your past conversation history {npcConversationHistory}. You are in {npcLocation}. You are talking to {otherNpc.npcName}. This is their character profile: {otherNpc.npcCharacterProfile}. Say something appropriate, natural, with respect to your previous conversations, and your goal as a character.";
         
-        StartCoroutine(TalkToNpcThisBumpedInto(otherNpc, npcThoughtProcessPrompt));
-    }
+    //     StartCoroutine(TalkToNpcThisBumpedInto(otherNpc, npcThoughtProcessPrompt));
+    // }
 
-    IEnumerator TalkToNpcThisBumpedInto(NpcController otherNpc, string npcThoughtProcessPrompt)
-    {
-        AskLlmResponse askLlmResponse = new AskLlmResponse();
-        yield return StartCoroutine(AskLlm(npcThoughtProcessPrompt, askLlmResponse));
+    // IEnumerator TalkToNpcThisBumpedInto(NpcController otherNpc, string npcThoughtProcessPrompt)
+    // {
+    //     AskLlmResponse askLlmResponse = new AskLlmResponse();
+    //     yield return StartCoroutine(AskLlm(npcThoughtProcessPrompt, askLlmResponse));
 
-        otherNpc.Tell(askLlmResponse.response);
-    }
+    //     otherNpc.Tell(askLlmResponse.response);
+    // }
 }
