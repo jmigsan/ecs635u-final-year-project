@@ -35,7 +35,7 @@ class TtsQuery(BaseModel):
 class NpcQuery(BaseModel):
     query: str
 
-# --- Helper functions ---
+# --- LLM initialise ---
 
 def load_model(model_path):
     llm = Llama(
@@ -47,41 +47,37 @@ def load_model(model_path):
     )
     return llm
 
-def format_prompt(user_input, conversation_history):
-    # Define the system message as guidance for the assistant.
-    system_message = {
-        "role": "system",
-        "content": (
-            "You are a helpful AI assistant that communicates clearly and directly, "
-            "provides accurate information while acknowledging uncertainty, thinks through problems step-by-step, "
-            "engages naturally in conversation while staying focused on the task at hand, "
-            "maintains appropriate boundaries, and aims to be genuinely useful to users while avoiding potential harm."
-        )
-    }
-    
-    # Start with the system message.
-    messages = [system_message]
-    
-    # Add the most recent messages from conversation_history (if any).
-    for msg in conversation_history[-5:]:
-        messages.append({
-            "role": msg['role'],
-            "content": msg['content']
-        })
-    
-    # Append the new user input.
-    messages.append({"role": "user", "content": user_input})
-    return messages
-
-# --- LLM initialise ---
-
 llm = load_model(r"E:\Code\AppData\LM-Studio\Models\hugging-quants\Llama-3.2-3B-Instruct-Q8_0-GGUF\llama-3.2-3b-instruct-q8_0.gguf")
 conversation_history = []
 
 # --- API endpoints ---
 
+@app.post("/llm")
+async def llm(npcQuery: NpcQuery) -> LlmResponse:
+    # Build message list directly
+    system_prompt = "You are a helpful AI assistant that communicates clearly and directly."
+    messages = [{"role": "system", "content": system_prompt}] + conversation_history[-5:] + [{"role": "user", "content": npcQuery.query}]
+
+    # Generate response
+    response = llm.create_chat_completion(
+        messages=messages,
+        temperature=0.7,
+        max_tokens=256,
+        stop=["User:", "Assistant:"],
+        stream=False
+    )
+
+    response_content = response['choices'][0]['message']['content'].strip()
+    print(f"Assistant: {response_content}")
+
+    # Append to history
+    conversation_history.append({"role": "user", "content": npcQuery.query})
+    conversation_history.append({"role": "assistant", "content": response_content})
+
+    return LlmResponse(llm_response=response_content)
+
 @app.post("/transcribe")
-async def transcribe_audio(audio: UploadFile = File(...)) -> TranscribeResponse:
+async def transcribe(audio: UploadFile = File(...)) -> TranscribeResponse:
     temp_name = None
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
         content = await audio.read()
@@ -95,29 +91,8 @@ async def transcribe_audio(audio: UploadFile = File(...)) -> TranscribeResponse:
     
     return TranscribeResponse(transcription = result["text"])
 
-@app.post("/llm")
-async def ask_llm(npcQuery: NpcQuery) -> LlmResponse:
-    full_prompt = format_prompt(npcQuery.query, conversation_history)
-
-    response = llm.chat_completion(
-        messages=full_prompt,
-        temperature=0.7,
-        max_tokens=256,
-        stream=False 
-    )
-
-    response_content = response["choices"][0]["message"]["content"]
-    print(f"Assistant: {response_content}")
-    
-    conversation_history.append({"role": "user", "content": npcQuery.query})
-    conversation_history.append({"role": "assistant", "content": response_content})
-
-    print(LlmResponse(llm_response = response_content), conversation_history)
-
-    return LlmResponse(llm_response = response_content)
-
 @app.post("/tts")
-async def npc_speak(ttsQuery: TtsQuery):
+async def tts(ttsQuery: TtsQuery):
     # communicate = edge_tts.Communicate(ttsQuery.words, "fil-PH-BlessicaNeural")
     communicate = edge_tts.Communicate(ttsQuery.words, "en-GB-SoniaNeural")
     audio_stream = io.BytesIO()
@@ -131,7 +106,7 @@ async def npc_speak(ttsQuery: TtsQuery):
     return StreamingResponse(audio_stream, media_type="audio/mpeg")
 
 @app.post("/test")
-async def pppp(npcQuery: NpcQuery):
+async def test(npcQuery: NpcQuery):
     print(npcQuery.query)
     return npcQuery.query
 
