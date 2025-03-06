@@ -39,3 +39,20 @@ def conditional_edge(state: State) -> Literal['tool_node', '__end__']:
         return "tool_node"
     else:
         return "__end__"
+
+graph = StateGraph(State)
+graph.add_node("tool_node", tool_node)
+graph.add_node("prompt_node", prompt_node)
+graph.add_conditional_edges(
+    'prompt_node',
+    conditional_edge
+)
+graph.add_edge("tool_node", "prompt_node")
+graph.set_entry_point("prompt_node")
+
+compiled_graph = graph.compile()
+
+initial_state = {"messages": ["Walk up to the player. Initiate a conversation about your favorite authors."]}
+final_state = compiled_graph.invoke(initial_state)
+
+print(final_state["messages"][-1].content)

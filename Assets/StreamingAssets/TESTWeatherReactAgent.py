@@ -57,4 +57,8 @@ APP = graph.compile()
 
 new_state = APP.invoke({"messages": ["What's the weather in Yorkshire?"]})
 
-print(new_state["messages"][-1].content)
+# print(new_state["messages"][-1].content)
+
+# TEST THIS OUT TO SEE WHAT IT OUTPUTS
+from pprint import pprint
+pprint(new_state)
