@@ -1,9 +1,9 @@
-from typing import List, TypedDict
-from langchain_google_genai import ChatGoogleGenerativeAI
+from typing import TypedDict
+import instructor
+import google.generativeai as genai
 from langgraph.graph import StateGraph
 from pydantic import BaseModel
-from langchain.prompts import PromptTemplate
-from langchain.output_parsers import PydanticOutputParser
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 class NpcDirections(BaseModel):
     npc_name: str
@@ -12,7 +12,7 @@ class NpcDirections(BaseModel):
 class Directions(BaseModel):
     music: str
     weather: str
-    npc_directions: List[NpcDirections] 
+    npc_directions: list[NpcDirections] 
 
 class State(TypedDict):
     game_state: str
@@ -22,12 +22,17 @@ class State(TypedDict):
     review_decision: str
     directions: Directions
 
+genai.configure(api_key="AIzaSyBbgaNd1O9xLJK1uai_i8fwGwgMDMRwPjA")
+
+client = instructor.from_gemini(
+    client=genai.GenerativeModel(model_name="gemini-2.0-flash"),
+    mode=instructor.Mode.GEMINI_JSON
+)
+
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
     google_api_key="AIzaSyBbgaNd1O9xLJK1uai_i8fwGwgMDMRwPjA",
 )
-
-npc_directions_parser = PydanticOutputParser(pydantic_object=NpcDirections)
 
 def reviewer(state: State) -> State:
     prompt = f"""
@@ -62,49 +67,26 @@ def major_disruption_writer(state: State) -> State:
     return state
 
 def director(state: State) -> State:
-    director_prompt = PromptTemplate(
-    template="""
+    prompt = f"""
         You are directing video game NPCs.
         You are making them follow a story.
         Here is the story you are following: 
-        {story}
+        {state["story"]}
         
-        You are currently in Act: {current_act}, Scene: {current_scene}.
+        You are currently in Act: {state["current_act"]}, Scene: {state["current_scene"]}.
         Here is the current state of the story: 
-        {game_state}
+        {state["game_state"]}
         
-        For a relevant character, provide specific commands to advance the story.
-        Return the response in the following JSON format:
-        {format_instructions}
+        For any relevant character, provide specific commands to advance the story.
+    """
 
-        Example output:
-        {{
-            "music": "tense_battle_theme",
-            "weather": "stormy",
-            "npc_directions": [
-                {{"npc_name": "Guard", "direction": }},
-                {{"npc_name": "Merchant", "direction": }}
-            ]
-        }}
-    """,
-    input_variables=["story", "current_act", "current_scene", "game_state"],
-    partial_variables={"format_instructions": npc_directions_parser.get_format_instructions()}
+    structured_response = client.chat.completions.create(
+        messages=[{"role": "user", "content": prompt}],
+        response_model=Directions
     )
 
-    prompt = director_prompt.format(
-        story=state["story"],
-        current_act=state["current_act"],
-        current_scene=state["current_scene"],
-        game_state=state["game_state"]
-    )
-    
-    response = llm.invoke(prompt)
-    structured_response = npc_directions_parser.parse(response.content.strip())
     state["directions"] = structured_response
     
     return state
-
-
-
 
 graph = StateGraph(State)

@@ -1,32 +1,30 @@
-[tool.poetry]
+[project]
 name = "streamingassets"
 version = "0.1.0"
-description = ""
-authors = ["jmigsan <43961001+jmigsan@users.noreply.github.com>"]
+description = "Add your description here"
 readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "edge-tts>=7.0.0",
+    "fastapi>=0.115.11",
+    "langchain-community>=0.3.19",
+    "langchain-google-genai>=2.0.11",
+    "langgraph>=0.3.5",
+    "numba>=0.61.0",
+    "numpy>=2.1.3",
+    "openai-whisper>=20240930",
+    "pydantic>=2.10.6",
+    "python-multipart>=0.0.20",
+    "torch>=2.6.0",
+    "uvicorn>=0.34.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-fastapi = "^0.115.8"
-uvicorn = "^0.34.0"
-python-multipart = "^0.0.20"
-numba = "^0.61.0"
-openai-whisper = "^20240930"
-torch = {version = "^2.6.0+cu118", source = "pytorch-gpu"}
-torchvision = {version = "^0.21.0+cu118", source = "pytorch-gpu"}
-torchaudio = {version = "^2.6.0+cu118", source = "pytorch-gpu"}
-edge-tts = "^7.0.0"
-numpy = "^2.1"
-pydantic = "^2.10.6"
-langgraph = "^0.3.5"
-langchain-community = "^0.3.19"
-langchain-google-genai = "^2.0.11"
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
 
-[[tool.poetry.source]]
-name = "pytorch-gpu"
+[[tool.uv.index]]
+name = "pytorch-cu118"
 url = "https://download.pytorch.org/whl/cu118"
-priority = "explicit"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+explicit = true
