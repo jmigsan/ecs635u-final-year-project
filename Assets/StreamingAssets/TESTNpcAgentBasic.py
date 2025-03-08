@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import json
 import uvicorn
+import asyncio
 
 # region FastAPI Websockets
 # --------- THIS PART IS ABOUT FASTAPI WEBSOCKETS ---------
@@ -70,6 +71,49 @@ async def npc_websocket(websocket: WebSocket, npc_id: str):
 
 # endregion
 
+# region Unity Connector
+# -------- THIS IS HOW UNITY AND PYTHON TALK --------------
+class UnityConnector:
+    async def send_command(self, command_type, **params):
+        """Send command to Unity and wait for response"""
+        # Implementation depends on your communication method (websockets, HTTP, etc.)
+        # Example with websockets:
+        # await websocket.send_json({"command": command_type, **params})
+        # response = await websocket.receive_json()
+        
+        # Placeholder implementation with simulated delay
+        await asyncio.sleep(1)  # Simulating time for Unity to process and respond
+        
+        # Simulate Unity's response (replace with actual implementation)
+        if command_type == "walk":
+            return {
+                "objects_you_can_walk_to": ["table", "door"],
+                "objects_you_can_interact_with": ["book"],
+                "characters_you_can_walk_to": ["player"],
+                "characters_you_can_interact_with": ["player"],
+                "location": params["location"]
+            }
+        elif command_type == "interact":
+            return {
+                "objects_you_can_walk_to": ["table", "door"],
+                "objects_you_can_interact_with": ["book"],
+                "characters_you_can_walk_to": ["player"],
+                "characters_you_can_interact_with": ["player"],
+                "location": "near " + params["object"]
+            }
+        elif command_type == "speak":
+            return {
+                "objects_you_can_walk_to": ["table", "door"],
+                "objects_you_can_interact_with": ["book"],
+                "characters_you_can_walk_to": ["player"],
+                "characters_you_can_interact_with": ["player"],
+                "location": "talking to " + params["character"]
+            }
+        
+unity_connector = UnityConnector()
+
+# endregion
+
 # region NPC Agent
 # ------ THIS PART IS ABOUT THE NPC AGENT -------
 
@@ -118,24 +162,6 @@ def prompt_node(state: State) -> State:
     new_message = llm_with_tools.invoke(state["messages"])
     return {"messages": [new_message]}
 
-def perception_node(state: State) -> State: 
-    # Placeholder function that would retrieve perception data from Unity
-    def get_perception_from_unity() -> PerceivedState:
-        return PerceivedState(
-            objects_you_can_walk_to=["table", "door", "bookshelf"],
-            objects_you_can_interact_with=["book", "lamp", "computer"],
-            characters_you_can_walk_to=["Alice", "Bob"],
-            characters_you_can_interact_with=["Alice"],
-            location="living room",
-        )
-
-    new_perception = get_perception_from_unity()
-    
-    return {
-        "messages": state["messages"],
-        "perception": new_perception
-    }
-
 def conditional_edge(state: State) -> Literal['tool_node', '__end__']:
     last_message = state["messages"][-1]
     if last_message.tool_calls:
@@ -149,15 +175,13 @@ graph = StateGraph(State)
 
 graph.add_node("prompt_node", prompt_node)
 graph.add_node("tool_node", tool_node)
-graph.add_node("perception_node", perception_node)
 
 graph.add_conditional_edges(
     'prompt_node',
     conditional_edge
 )
 
-graph.add_edge("tool_node", "perception_node")
-graph.add_edge("perception_node", "prompt_node")
+graph.add_edge("tool_node", "prompt_node")
 graph.set_entry_point("prompt_node")
 
 npc_graph = graph.compile()
