@@ -20,7 +20,7 @@ def get_weather(location: str):
         return "It's warm and sunny."
     
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
+    model="gemini-2.0-flash-lite",
     google_api_key="AIzaSyBbgaNd1O9xLJK1uai_i8fwGwgMDMRwPjA",
 )
 
@@ -57,8 +57,8 @@ APP = graph.compile()
 
 new_state = APP.invoke({"messages": ["What's the weather in Yorkshire?"]})
 
-# print(new_state["messages"][-1].content)
-
 # TEST THIS OUT TO SEE WHAT IT OUTPUTS
 from pprint import pprint
 pprint(new_state)
+print("\n----------\n")
+print(new_state["messages"][-1].content)
