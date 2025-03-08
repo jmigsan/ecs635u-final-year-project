@@ -3,7 +3,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class NpcControllerTwo : MonoBehaviour, IInteractable
+public class NpcControllerOneOne : MonoBehaviour, IInteractable
 {
     #region Websocket Code
 
