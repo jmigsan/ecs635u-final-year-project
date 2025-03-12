@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import json
+import asyncio
 
 app = FastAPI()
 
@@ -53,7 +54,6 @@ from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.prebuilt import InjectedState
 from typing_extensions import Annotated
 import uuid
-import asyncio
 import textwrap
 
 model = ChatGoogleGenerativeAI(
@@ -154,7 +154,7 @@ tools = [walk, talk]
 config = {"configurable": {"thread_id": "1"}}
 system_prompt = "You are an actor in a play. Follow the directions given to you. You can only interact with things less than 1 meter away from you. Interactions include: talking."
 
-graph = create_react_agent(model, tools=tools, config=config, checkpointer=memory, prompt=system_prompt)
+graph = create_react_agent(model, tools=tools, checkpointer=memory, prompt=system_prompt)
 
 def print_stream(stream):
     for s in stream:
@@ -170,4 +170,4 @@ Goal: {goal}
 """
 
 inputs = {"messages": [("user", input_prompt)]}
-print_stream(graph.stream(inputs, stream_mode="values"))
+print_stream(graph.stream(inputs, config=config, stream_mode="values"))
