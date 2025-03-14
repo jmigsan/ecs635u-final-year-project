@@ -205,7 +205,7 @@ async def npc_endpoint(websocket: WebSocket):
             if raw_message.type == "initialise_client":
                 message = InitialiseClientMessage(**raw_message)
                 active_npcs[message.name] = NPC(name=message.name, personality=message.personality, perception=message.perceived_state, websocket=websocket)
-            
+
     except WebSocketDisconnect:
         print("Client disconnected")
 
