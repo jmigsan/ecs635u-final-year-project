@@ -3,7 +3,7 @@
 
 import textwrap
 from typing_extensions import TypedDict
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import BaseModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
@@ -18,8 +18,10 @@ from pydantic import BaseModel, Field
 # ----- Director BaseModels
 
 class DirectedAction(BaseModel):
-    character: str = Field(description="The character that will do the action")
-    action: str = Field(description="The action the character will do")
+    character: str = Field(description="Name of the character that will do the action")
+    action: str = Field(description="The action to perform")
+    target: str = Field(description="The target of the action (character name or object)")
+    message: Optional[str] = Field(default=None, description="Message content when talking")
 
 # ----- Writer BaseModels
 
@@ -98,6 +100,38 @@ def director_follows_scene(state: State):
 
         Look at what has happened. Judge what part of the story we are in. Think what should happen next. 
         According to what should happen next, who should act next and what should they do?
+
+        Reply in JSON.
+        Structure the JSON like this:
+        {{
+            "character": "Name of character doing the action",
+            "action": "Action to perform (sit, talk, wave, etc.)",
+            "target": "Name of character or object being interacted with",
+            "message": "If the action is 'talk', include the message here"
+        }}
+
+        Examples:
+        - For interacting with objects:
+        {{
+            "character": "Haruto",
+            "action": "sit"
+            "target": "chair",
+        }}
+        
+        - For talking to a person:
+        {{
+            "character": "Haruto",
+            "action": "talk", 
+            "target": "Aiko", 
+            "message": "Hello there! How's your day going?"
+        }}
+        
+        - For performing an action towards a person:
+        {{
+            "character": "Haruto",
+            "action": "wave"
+            "target": "Aiko", 
+        }}
         """))
 
     return {"direction": direction}
@@ -215,7 +249,7 @@ characters = [
 
 previous_actions: list[PreviousAction] = []
 
-@app.websocket("/ws")
+@app.websocket("/narrative-engine")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
@@ -228,15 +262,25 @@ async def websocket_endpoint(websocket: WebSocket):
                 begin_story = BeginStory(**raw_message)
 
                 initial_story_agent = initial_story_workflow.compile()
-                director_response = await asyncio.to_thread(
+                response = await asyncio.to_thread(
                     partial(initial_story_agent.invoke, {
                         "characters": characters,
                         "setting": setting,
                         "character_perceptions": begin_story.character_perceptions
                     })
                 )
-                
-                await websocket.send_json(director_response)
+
+                response_data = {
+                    "type": "director_response",
+                    "character": response["direction"].character,
+                    "action": response["direction"].action,
+                    "target": response["direction"].target
+                }
+
+                if response["direction"].message is not None:
+                    response_data["message"] = response["direction"].message
+                    
+                await websocket.send_json(response_data)
                 continue
 
             if raw_message.type == "completed_direction":
@@ -245,7 +289,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 previous_actions.append(action)
 
                 continue_story_agent = continue_story_workflow.compile()
-                director_response = await asyncio.to_thread(
+                response = await asyncio.to_thread(
                     partial(continue_story_agent.invoke, {
                             "characters": characters,
                             "previous_actions": previous_actions,
@@ -254,7 +298,17 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
                     )
                 
-                await websocket.send_json(director_response)
+                response_data = {
+                    "type": "director_response",
+                    "character": response["direction"].character,
+                    "action": response["direction"].action,
+                    "target": response["direction"].target
+                }
+
+                if response["direction"].message is not None:
+                    response_data["message"] = response["direction"].message
+                    
+                await websocket.send_json(response_data)
                 continue
             
             if raw_message.type == "player_interruption":
@@ -263,7 +317,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 previous_actions.append(action)
 
                 disrupted_story_agent = disrupted_story_workflow.compile()
-                director_response = await asyncio.to_thread(
+                response = await asyncio.to_thread(
                     partial(disrupted_story_agent.invoke, {
                         "characters": characters,
                         "previous_actions": previous_actions,
@@ -272,13 +326,30 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
                 )
                 
-                await websocket.send_json(director_response)
+                response_data = {
+                    "type": "director_response",
+                    "character": response["direction"].character,
+                    "action": response["direction"].action,
+                    "target": response["direction"].target
+                }
+
+                if response["direction"].message is not None:
+                    response_data["message"] = response["direction"].message
+                    
+                await websocket.send_json(response_data)
                 continue
             
             if raw_message.type == "heartbeat":
-                await websocket.send_json({"type": "heartbeat_ack", "timestamp": time.time()})
+                await websocket.send_json({
+                    "type": "heartbeat_ack", 
+                    "timestamp": time.time()
+                })
                 continue
     
     except WebSocketDisconnect:
         print("Client disconnected")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("TESTDirectorBrain140325:app", host="127.0.0.1", port=8000, reload=True)
 
