@@ -3,7 +3,7 @@
 
 import textwrap
 from typing_extensions import TypedDict
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 from pydantic import BaseModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
@@ -17,11 +17,18 @@ from pydantic import BaseModel, Field
 
 # ----- Director BaseModels
 
-class DirectedAction(BaseModel):
+class SimpleAction(BaseModel):
     character: str = Field(description="Name of the character that will do the action")
-    action: str = Field(description="The action to perform")
+    action: str = Field(description="The action to perform (e.g., sit, wave)")
     target: str = Field(description="The target of the action (character name or object)")
-    message: Optional[str] = Field(default=None, description="Message content when talking")
+
+class TalkAction(BaseModel):
+    character: str = Field(description="Name of the character that will do the action")
+    action: Literal["talk"] = Field(description="The action to perform, must be 'talk'")
+    target: str = Field(description="The target of the action (character name or object)")
+    message: str = Field(description="Message content for talking")
+
+DirectedAction = Union[SimpleAction, TalkAction]
 
 # ----- Writer BaseModels
 
@@ -101,37 +108,25 @@ def director_follows_scene(state: State):
         Look at what has happened. Judge what part of the story we are in. Think what should happen next. 
         According to what should happen next, who should act next and what should they do?
 
-        Reply in JSON.
-        Structure the JSON like this:
+        Reply in JSON. Use one of these structures:
+        - For actions without a message (e.g., sit, wave):
         {{
             "character": "Name of character doing the action",
-            "action": "Action to perform (sit, talk, wave, etc.)",
-            "target": "Name of character or object being interacted with",
-            "message": "If the action is 'talk', include the message here"
+            "action": "Action to perform (sit, wave, etc.)"
+            "target": "Name of character or object",
+        }}
+
+        - For talk, specifically:
+        {{
+            "character": "Name of character doing the action",
+            "action": "talk",
+            "target": "Name of character or object",
+            "message": "The message to say"
         }}
 
         Examples:
-        - For interacting with objects:
-        {{
-            "character": "Haruto",
-            "action": "sit"
-            "target": "chair",
-        }}
-        
-        - For talking to a person:
-        {{
-            "character": "Haruto",
-            "action": "talk", 
-            "target": "Aiko", 
-            "message": "Hello there! How's your day going?"
-        }}
-        
-        - For performing an action towards a person:
-        {{
-            "character": "Haruto",
-            "action": "wave"
-            "target": "Aiko", 
-        }}
+        - {{"character": "Haruto",  "action": "sit", "target": "chair"}}
+        - {{"character": "Haruto", "action": "talk", "target": "Aiko", "message": "Hello!"}}
         """))
 
     return {"direction": direction}
@@ -276,10 +271,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     "action": response["direction"].action,
                     "target": response["direction"].target
                 }
-
-                if response["direction"].message is not None:
+                if isinstance(response["direction"], TalkAction):
                     response_data["message"] = response["direction"].message
-                    
+
                 await websocket.send_json(response_data)
                 continue
 
@@ -304,10 +298,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     "action": response["direction"].action,
                     "target": response["direction"].target
                 }
-
-                if response["direction"].message is not None:
+                if isinstance(response["direction"], TalkAction):
                     response_data["message"] = response["direction"].message
-                    
+
                 await websocket.send_json(response_data)
                 continue
             
@@ -332,10 +325,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     "action": response["direction"].action,
                     "target": response["direction"].target
                 }
-
-                if response["direction"].message is not None:
+                if isinstance(response["direction"], TalkAction):
                     response_data["message"] = response["direction"].message
-                    
+
                 await websocket.send_json(response_data)
                 continue
             
