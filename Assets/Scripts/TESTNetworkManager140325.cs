@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -22,11 +21,10 @@ public class TESTNetworkManager140325 : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        
+
         Instance = this;
         DontDestroyOnLoad(gameObject);
     }
- 
 
     async void Start()
     {
@@ -44,7 +42,7 @@ public class TESTNetworkManager140325 : MonoBehaviour
             await websocket.Connect();
         };
 
-        websocket.OnError += () =>
+        websocket.OnError += (e) =>
         {
             Debug.Log("Connection error!");
         };
@@ -59,10 +57,10 @@ public class TESTNetworkManager140325 : MonoBehaviour
     public class CharacterPerception
     {
         public string character { get; set; }
-        
+
         [JsonProperty("things_character_sees")]
         public List<ThingPerception> thingsCharacterSees { get; set; } = new List<ThingPerception>();
-        
+
         [JsonProperty("actions_character_can_do")]
         public List<ActionPerception> actionsCharacterCanDo { get; set; } = new List<ActionPerception>();
     }
@@ -99,7 +97,7 @@ public class TESTNetworkManager140325 : MonoBehaviour
         public string time { get; set; }
         public string character { get; set; }
         public string action { get; set; }
-        
+
         [JsonProperty("character_perceptions")]
         public List<CharacterPerception> characterPerceptions { get; set; } = new List<CharacterPerception>();
     }
@@ -117,18 +115,18 @@ public class TESTNetworkManager140325 : MonoBehaviour
                 string character = (string)jsonObj["character"];
                 string action = (string)jsonObj["action"];
                 string target = (string)jsonObj["target"];
-                
+
                 if (action == "talk")
                 {
                     string messageText = (string)jsonObj["message"];
                     Debug.Log($"{character} will talk to {target} saying: {messageText}");
-                    
+
                     OnTalkActionReceived?.Invoke(character, action, target, messageText);
                 }
                 else
                 {
                     Debug.Log($"{character} will {action} {target}");
-                    
+
                     OnActionReceived?.Invoke(character, action, target);
                 }
                 break;
@@ -144,10 +142,10 @@ public class TESTNetworkManager140325 : MonoBehaviour
         }
     }
 
-    async void SendCompletedAction(
-        string type, 
-        string character, 
-        string action, 
+    public async void SendCompletedAction(
+        string type,
+        string character,
+        string action,
         List<CharacterPerception> perceptions)
     {
         long unixTimestamp = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds();
@@ -161,7 +159,7 @@ public class TESTNetworkManager140325 : MonoBehaviour
             action = action,
             characterPerceptions = perceptions
         };
-        
+
         string json = JsonConvert.SerializeObject(completedAction);
         await websocket.SendText(json);
         Debug.Log("Sent completed action. JSON: " + json);
@@ -169,9 +167,9 @@ public class TESTNetworkManager140325 : MonoBehaviour
 
     void Update()
     {
-        #if !UNITY_WEBGL || UNITY_EDITOR
-            websocket.DispatchMessageQueue();
-        #endif
+#if !UNITY_WEBGL || UNITY_EDITOR
+        websocket.DispatchMessageQueue();
+#endif
     }
 
     class HeartbeatMessage
@@ -184,12 +182,33 @@ public class TESTNetworkManager140325 : MonoBehaviour
         HeartbeatMessage message = new HeartbeatMessage();
         string json = JsonConvert.SerializeObject(message);
         await websocket.SendText(json);
-        Debug.Log("Sent heartbeat! JSON: " + json);
+        Debug.Log("Sent heartbeat. JSON: " + json);
     }
 
     async void OnApplicationQuit()
     {
         await websocket.Close();
+    }
+
+    public class BeginStoryMessage
+    {
+        public string type { get; set; } = "begin_story";
+
+        [JsonProperty("character_perceptions")]
+        public List<CharacterPerception> characterPerceptions { get; set; } = new List<CharacterPerception>();
+    }
+
+    async void SendBeginStory()
+    {
+        BeginStoryMessage beginStoryMessage = new BeginStoryMessage
+        {
+            characterPerceptions = TESTGameManager150325.Instance.GetAllPerceptions()
+        };
+
+        string json = JsonConvert.SerializeObject(beginStoryMessage);
+
+        await websocket.SendText(json);
+        Debug.Log("Sent begin story. JSON: " + json);
     }
 
 }

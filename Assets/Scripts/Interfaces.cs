@@ -1,15 +1,18 @@
-public interface IInteractable
-{
-    string action { get; set; }
-    void Interact();
-}
-
-public interface IPerceptible
-{
-    string type { get; set; }
-}
+using UnityEngine;
 
 public interface INamed
 {
-    string name { get; set; }
+    string entityName { get; set; }
+}
+
+public interface IPerceptible : INamed
+{
+    string type { get; set; }
+    Vector3 GetPosition();
+}
+
+public interface IActionable : IPerceptible
+{
+    string action { get; set; }
+    void Action();
 }

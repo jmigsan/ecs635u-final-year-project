@@ -1,11 +1,11 @@
 using UnityEngine;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine.AI;
 
-public class TESTNpcController150325 : MonoBehaviour
+public class TESTNpcController150325 : MonoBehaviour, IPerceptible
 {
-    public string characterName;
+    public string entityName { get; set; }
+    public string type { get; set; }
+
     NavMeshAgent navAgent;
 
     void Start()
@@ -21,10 +21,15 @@ public class TESTNpcController150325 : MonoBehaviour
         }
     }
 
-    public void Walk(IInteractable target)
+    Vector3 IPerceptible.GetPosition()
+    {
+        return transform.position;
+    }
+
+    public void Walk(IActionable target)
     {
         navAgent.ResetPath();
-        navAgent.SetDestination(target.GetDestination());        
+        navAgent.SetDestination(target.GetPosition());
     }
 
     private void StopWalking()
@@ -35,13 +40,12 @@ public class TESTNpcController150325 : MonoBehaviour
 
     public void Talk(TESTNpcController150325 target, string message)
     {
-        Debug.Log($"{characterName} says to {target.characterName}: {message}");
+        Debug.Log($"{entityName} says to {target.entityName}: {message}");
         SendCompletedAction("completed_direction", "talk");
     }
 
     void SendCompletedAction(string type, string action)
     {
-        TESTGameManager150325.Instance.SendCompletedAction(type, characterName, action);
+        TESTGameManager150325.Instance.SendCompletedAction(type, entityName, action);
     }
-
 }
