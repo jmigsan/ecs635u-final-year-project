@@ -7,9 +7,26 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 using NativeWebSocket;
 
-public class TestDirectorClient1403525 : MonoBehaviour
+public class TESTNetworkManager140325 : MonoBehaviour
 {
+    public static TESTNetworkManager140325 Instance { get; private set; }
     WebSocket websocket;
+
+    public event Action<string, string, string> OnActionReceived;
+    public event Action<string, string, string, string> OnTalkActionReceived;
+
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+ 
 
     async void Start()
     {
@@ -34,12 +51,11 @@ public class TestDirectorClient1403525 : MonoBehaviour
 
         websocket.OnMessage += OnWebSocketMessage;
 
-        InvokeRepeating("SendHeartbeat", 2.0f, 15.0f);
+        InvokeRepeating("SendHeartbeat", 3.0f, 15.0f);
 
         await websocket.Connect();
     }
 
-    // Character Perception class
     public class CharacterPerception
     {
         public string character { get; set; }
@@ -100,11 +116,28 @@ public class TestDirectorClient1403525 : MonoBehaviour
             case "director_response":
                 string character = (string)jsonObj["character"];
                 string action = (string)jsonObj["action"];
+                string target = (string)jsonObj["target"];
+                
+                if (action == "talk")
+                {
+                    string messageText = (string)jsonObj["message"];
+                    Debug.Log($"{character} will talk to {target} saying: {messageText}");
+                    
+                    OnTalkActionReceived?.Invoke(character, action, target, messageText);
+                }
+                else
+                {
+                    Debug.Log($"{character} will {action} {target}");
+                    
+                    OnActionReceived?.Invoke(character, action, target);
+                }
                 break;
+
             case "heartbeat_ack":
                 string timestamp = (string)jsonObj["timestamp"];
                 Debug.Log($"Received heartbeat ack. Timestamp: {timestamp}");
                 break;
+
             default:
                 Debug.LogWarning($"Unknown message type: {type}");
                 break;

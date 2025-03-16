@@ -3,7 +3,7 @@
 
 import textwrap
 from typing_extensions import TypedDict
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 from pydantic import BaseModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
