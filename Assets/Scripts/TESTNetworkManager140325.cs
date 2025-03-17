@@ -12,6 +12,7 @@ public class TESTNetworkManager140325 : MonoBehaviour
     WebSocket websocket;
 
     public event Action<string, string, string> OnActionReceived;
+    public event Action<string, string, string> OnWalkActionReceived;
     public event Action<string, string, string, string> OnTalkActionReceived;
 
     void Awake()
@@ -37,9 +38,7 @@ public class TESTNetworkManager140325 : MonoBehaviour
 
         websocket.OnClose += async (e) =>
         {
-            Debug.Log("Connection closed! Reconnecting in 2 seconds...");
-            await Task.Delay(2000);
-            await websocket.Connect();
+            Debug.Log("Connection closed!");
         };
 
         websocket.OnError += (e) =>
@@ -69,18 +68,19 @@ public class TESTNetworkManager140325 : MonoBehaviour
     {
         public string type { get; set; }  // "character" or "object"
         public string entity { get; set; }
+        public string description { get; set; }
     }
 
     public class ActionPerception
     {
         public string target { get; set; }
-        public string action { get; set; }
+        public List<string> actions { get; set; }
     }
 
     // things character sees
     // [
-    //      {"type": "character", "entity": "Aiko"}
-    //      {"type": "object", "entity": "chair"}
+    //      {"type": "character", "entity": "Aiko", "description": "Haruto's friend"}
+    //      {"type": "object", "entity": "chair", "description": "Wooden"}
     // ]
 
     // actions characters can do
@@ -97,15 +97,21 @@ public class TESTNetworkManager140325 : MonoBehaviour
         public string time { get; set; }
         public string character { get; set; }
         public string action { get; set; }
+        public string target { get; set; }
 
         [JsonProperty("character_perceptions")]
         public List<CharacterPerception> characterPerceptions { get; set; } = new List<CharacterPerception>();
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public string message { get; set; }
     }
 
     void OnWebSocketMessage(byte[] bytes)
     {
         string message = System.Text.Encoding.UTF8.GetString(bytes);
         JObject jsonObj = JObject.Parse(message);
+
+        Debug.Log("Received message. JSON: " + message);
 
         string type = (string)jsonObj["type"];
 
@@ -116,18 +122,23 @@ public class TESTNetworkManager140325 : MonoBehaviour
                 string action = (string)jsonObj["action"];
                 string target = (string)jsonObj["target"];
 
-                if (action == "talk")
+                switch (action)
                 {
-                    string messageText = (string)jsonObj["message"];
-                    Debug.Log($"{character} will talk to {target} saying: {messageText}");
+                    case "talk":
+                        string messageText = (string)jsonObj["message"];
+                        Debug.Log($"{character} will talk to {target} saying: {messageText}");
+                        OnTalkActionReceived?.Invoke(character, action, target, messageText);
+                        break;
 
-                    OnTalkActionReceived?.Invoke(character, action, target, messageText);
-                }
-                else
-                {
-                    Debug.Log($"{character} will {action} {target}");
+                    case "walk":
+                        Debug.Log($"{character} will walk to {target}");
+                        OnWalkActionReceived?.Invoke(character, action, target);
+                        break;
 
-                    OnActionReceived?.Invoke(character, action, target);
+                    default:
+                        Debug.Log($"{character} will {action} {target}");
+                        OnActionReceived?.Invoke(character, action, target);
+                        break;
                 }
                 break;
 
@@ -146,7 +157,9 @@ public class TESTNetworkManager140325 : MonoBehaviour
         string type,
         string character,
         string action,
-        List<CharacterPerception> perceptions)
+        string target,
+        List<CharacterPerception> perceptions,
+        string message = null)
     {
         long unixTimestamp = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds();
         string time = unixTimestamp.ToString();
@@ -157,7 +170,9 @@ public class TESTNetworkManager140325 : MonoBehaviour
             time = time,
             character = character,
             action = action,
-            characterPerceptions = perceptions
+            target = target,
+            characterPerceptions = perceptions,
+            message = message
         };
 
         string json = JsonConvert.SerializeObject(completedAction);
@@ -198,7 +213,7 @@ public class TESTNetworkManager140325 : MonoBehaviour
         public List<CharacterPerception> characterPerceptions { get; set; } = new List<CharacterPerception>();
     }
 
-    async void SendBeginStory()
+    public async void SendBeginStory()
     {
         BeginStoryMessage beginStoryMessage = new BeginStoryMessage
         {

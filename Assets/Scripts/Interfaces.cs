@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public interface INamed
@@ -8,11 +9,13 @@ public interface INamed
 public interface IPerceptible : INamed
 {
     string type { get; set; }
+    string description { get; set; }
     Vector3 GetPosition();
+    Transform GetTransform();
 }
 
-public interface IActionable : IPerceptible
+public interface IActionable : IPerceptible 
 {
-    string action { get; set; }
-    void Action();
+    List<string> nearActions { get; set; }
+    List<string> farActions { get; set; }
 }

@@ -3,13 +3,13 @@
 
 import textwrap
 from typing_extensions import TypedDict
-from typing import Literal, Union
+from typing import Literal, Optional
 from pydantic import BaseModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash-lite",
+    model="gemini-2.0-flash",
     google_api_key="AIzaSyBbgaNd1O9xLJK1uai_i8fwGwgMDMRwPjA",
 )
 
@@ -17,18 +17,19 @@ from pydantic import BaseModel, Field
 
 # ----- Director BaseModels
 
-class SimpleAction(BaseModel):
+class DirectedAction(BaseModel):
     character: str = Field(description="Name of the character that will do the action")
-    action: str = Field(description="The action to perform (e.g., sit, wave)")
+    action: str = Field(description="The action to perform")
     target: str = Field(description="The target of the action (character name or object)")
+    message: Optional[str] = Field(description="Message content for talking but this optional and must only be included if the action is 'talk'")
 
-class TalkAction(BaseModel):
-    character: str = Field(description="Name of the character that will do the action")
-    action: Literal["talk"] = Field(description="The action to perform, must be 'talk'")
-    target: str = Field(description="The target of the action (character name or object)")
-    message: str = Field(description="Message content for talking")
-
-DirectedAction = Union[SimpleAction, TalkAction]
+# ------ Director/Writer BaseModel
+class PreviousAction(BaseModel):
+    time: str
+    character: str
+    action: str
+    target: str
+    message: Optional[str] = None
 
 # ----- Writer BaseModels
 
@@ -54,15 +55,24 @@ class Character(BaseModel):
 
 # ----- State BaseModels
 
+class PerceptionItem(BaseModel):
+    type: str
+    entity: str
+    description: str
+
+class PossibleAction(BaseModel):
+    target: str
+    actions: list[str]
+
 class CharacterPerception(BaseModel):
     character: str
-    things_character_sees: list[str]
-    actions_character_can_do: list[str]
+    things_character_sees: list[PerceptionItem]
+    actions_character_can_do: list[PossibleAction]
 
 class State(TypedDict):
     story: FiveActScene
     direction: DirectedAction
-    previous_actions: list[DirectedAction]
+    previous_actions: list[PreviousAction]
     characters: list[Character]
     character_perceptions: list[CharacterPerception]
     setting: str
@@ -76,7 +86,7 @@ def writer_makes_story(state: State):
         Write a scene for a romantic slice of life anime.
 
         Here are your characters.
-        {state["characters"]}               
+        {state["characters"]}
 
         The story is set in the following setting:
         {state["setting"]}
@@ -103,29 +113,29 @@ def director_follows_scene(state: State):
         This is what each character sees and is able to do.
         {state["character_perceptions"]}
 
-        Direct the characters to follow the story as best as possible given their limitations.
+        Under NO CIRCUMSTANCES should a character be directed to perform an action that is not explicitly listed in their 'actions_character_can_do'. If the desired story progression requires an action that is not allowed, the character MUST first perform a valid action (like 'walk' to the target) or the story should adapt.
+
+        Direct the characters to follow the story as best as possible WITHIN these strict limitations.
+        Do not direct the player. The story is for a video game. The player character will be controlled by the user.
 
         Look at what has happened. Judge what part of the story we are in. Think what should happen next. 
         According to what should happen next, who should act next and what should they do?
 
-        Reply in JSON. Use one of these structures:
-        - For actions without a message (e.g., sit, wave):
-        {{
-            "character": "Name of character doing the action",
-            "action": "Action to perform (sit, wave, etc.)"
-            "target": "Name of character or object",
-        }}
+        Example Perceptions: [{{"character": "Haruto", "things_character_sees": [{{"type": "character", "entity": "Sakura", "description": "Confidante / Matchmaker"}}, {{"type": "character", "entity": "Aiko", "description": "Main Love Interest"}}, {{"type": "object", "entity": "table", "description": "A brown table. Nothing on it."}}, {{"type": "character", "entity": "Player", "description": "User"}}], "actions_character_can_do": [{{"target": "Sakura", "actions": ["walk"]}}, {{"target": "Aiko", "actions": ["walk"]}}, {{"target": "Player", "actions": ["walk"]}}]}}]
+        A particular character must only respond with the list of actions_character_can_do.
+        If a character needs to interact with another character (including talking), and 'talk' is not in their 'actions_character_can_do' list with that target, their ONLY allowed immediate action towards that character is 'walk'.
 
-        - For talk, specifically:
+        Reply in JSON with the following structure:
         {{
             "character": "Name of character doing the action",
-            "action": "talk",
-            "target": "Name of character or object",
-            "message": "The message to say"
+            "action": "Action to perform (sit, wave, talk, etc.)",
+            "target": "Entity name of character or object",
+            "message": "The message to say"  // only include if action is "talk", otherwise omit
         }}
 
         Examples:
         - {{"character": "Haruto",  "action": "sit", "target": "chair"}}
+        - {{"character": "Haruto",  "action": "walk", "target": "chair"}}
         - {{"character": "Haruto", "action": "talk", "target": "Aiko", "message": "Hello!"}}
         """))
 
@@ -195,9 +205,6 @@ from functools import partial
 
 app = FastAPI()
 
-class RawMessage(BaseModel):
-    type: str
-
 class BeginStory(BaseModel):
     type: Literal["begin_story"]
     character_perceptions: list[CharacterPerception]
@@ -207,12 +214,9 @@ class CompletedAction(BaseModel):
     time: str
     character: str
     action: str
+    target: str
     character_perceptions: list[CharacterPerception]
-
-class PreviousAction(BaseModel):
-    time: str
-    character: str
-    action: str
+    message: Optional[str] = None  # Optional field with default None
 
 # ------- Initialisation settings
 
@@ -251,19 +255,24 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             raw_data = await websocket.receive_json()
-            raw_message = RawMessage(**raw_data)
+            message_type = raw_data.get("type", "")
 
-            if raw_message.type == "begin_story":
-                begin_story = BeginStory(**raw_message)
+            if message_type == "begin_story":
+                begin_story = BeginStory(**raw_data)
+                print("Begin story:", begin_story, "\n")
 
                 initial_story_agent = initial_story_workflow.compile()
                 response = await asyncio.to_thread(
                     partial(initial_story_agent.invoke, {
+                        "story": None,
+                        "direction": None,
+                        "previous_actions": [],
                         "characters": characters,
                         "setting": setting,
                         "character_perceptions": begin_story.character_perceptions
                     })
                 )
+                print("Begin story agent response:", response, "\n")
 
                 response_data = {
                     "type": "director_response",
@@ -271,20 +280,35 @@ async def websocket_endpoint(websocket: WebSocket):
                     "action": response["direction"].action,
                     "target": response["direction"].target
                 }
-                if isinstance(response["direction"], TalkAction):
+                if hasattr(response["direction"], "message") and response["direction"].message is not None:
                     response_data["message"] = response["direction"].message
+                
+                print("Director response:", response_data, "\n")
 
                 await websocket.send_json(response_data)
                 continue
 
-            if raw_message.type == "completed_direction":
-                completed_direction = CompletedAction(**raw_message)
-                action = PreviousAction(time=completed_direction.time, character=completed_direction.character, action=completed_direction.action)
+            if message_type == "completed_direction":
+                completed_direction = CompletedAction(**raw_data)
+                print("Completed direction:", completed_direction, "\n")
+
+                message = raw_data.get("message")
+
+                action = PreviousAction(
+                    time=completed_direction.time, 
+                    character=completed_direction.character, 
+                    action=completed_direction.action,
+                    target=completed_direction.target,
+                    message=message)
+                
                 previous_actions.append(action)
+                print("Previous actions:", previous_actions, "\n")
 
                 continue_story_agent = continue_story_workflow.compile()
                 response = await asyncio.to_thread(
                     partial(continue_story_agent.invoke, {
+                            "story": None,
+                            "direction": None,
                             "characters": characters,
                             "previous_actions": previous_actions,
                             "setting": setting,
@@ -298,20 +322,32 @@ async def websocket_endpoint(websocket: WebSocket):
                     "action": response["direction"].action,
                     "target": response["direction"].target
                 }
-                if isinstance(response["direction"], TalkAction):
+                if hasattr(response["direction"], "message") and response["direction"].message is not None:
                     response_data["message"] = response["direction"].message
+
+                print("Director response:", response_data, "\n")
 
                 await websocket.send_json(response_data)
                 continue
             
-            if raw_message.type == "player_interruption":
-                player_interruption = CompletedAction(**raw_message)
-                action = PreviousAction(time=player_interruption.time, character=player_interruption.character, action=player_interruption.action)
+            if message_type == "player_interruption":
+                player_interruption = CompletedAction(**raw_data)
+
+                message = raw_data.get("message")
+
+                action = PreviousAction(
+                    time=player_interruption.time, 
+                    character=player_interruption.character, 
+                    action=player_interruption.action,
+                    target=player_interruption.target,
+                    message=message)
                 previous_actions.append(action)
 
                 disrupted_story_agent = disrupted_story_workflow.compile()
                 response = await asyncio.to_thread(
                     partial(disrupted_story_agent.invoke, {
+                        "story": None,
+                        "direction": None,
                         "characters": characters,
                         "previous_actions": previous_actions,
                         "setting": setting,
@@ -325,13 +361,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     "action": response["direction"].action,
                     "target": response["direction"].target
                 }
-                if isinstance(response["direction"], TalkAction):
+                if hasattr(response["direction"], "message") and response["direction"].message is not None:
                     response_data["message"] = response["direction"].message
+
+                print("Director response:", response_data, "\n")
 
                 await websocket.send_json(response_data)
                 continue
             
-            if raw_message.type == "heartbeat":
+            if message_type == "heartbeat":
                 await websocket.send_json({
                     "type": "heartbeat_ack", 
                     "timestamp": time.time()
