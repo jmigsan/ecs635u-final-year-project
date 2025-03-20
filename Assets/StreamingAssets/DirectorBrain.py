@@ -24,6 +24,9 @@ class DirectedAction(BaseModel):
     target: str = Field(description="The target of the action (character name or object)")
     message: Optional[str] = Field(description="Message content for talking but this optional and must only be included if the action is 'talk'")
 
+class WhoNext(BaseModel):
+    character: Literal["Harry", "Emily", "Violet", "Akira", "Ren", "Julia"]
+
 # ------ Director/Writer BaseModel
 class PreviousAction(BaseModel):
     time: str
@@ -70,8 +73,9 @@ class CharacterPerception(BaseModel):
     actions_character_can_do: list[PossibleAction]
 
 class State(TypedDict):
-    # story: FiveActScene
-    story: str
+    story: FiveActScene
+    what_point_story_is_in: str
+    who_should_act_next: WhoNext
     direction: DirectedAction
     previous_actions: list[PreviousAction]
     characters: list[Character]
@@ -84,8 +88,10 @@ class State(TypedDict):
 structured_writer_llm = llm.with_structured_output(FiveActScene)
 
 def writer_makes_story(state: State):
-    story = structured_writer_llm.invoke(textwrap.dedent(f"""
+    story = structured_writer_llm.invoke(textwrap.dedent(
+        f"""
         Write an outline for a scene for a romantic slice of life anime.
+        However, the story is for a video game. One character is the user, who is the 'Player'.
 
         Here are your characters.
         {state["characters"]}
@@ -94,14 +100,14 @@ def writer_makes_story(state: State):
         {state["setting"]}
         """))
 
-        # But make a story that doesn't use the player. Have it be a scene where the player would just be witnessing events happen and the majority of the scene is happening to the other characters.
-
     return {"story": story}
 
 structured_director_llm = llm.with_structured_output(DirectedAction)
 
-def director_follows_scene(state: State):
-    direction = structured_director_llm.invoke(textwrap.dedent(f"""
+def director_1(state: State):
+
+    response = llm.invoke(textwrap.dedent(
+        f"""
         Look at this story:
         {state["story"]}
 
@@ -113,19 +119,97 @@ def director_follows_scene(state: State):
         
         This is what has happened:
         {state["previous_actions"]}
+
+        Based on the previous actions, determine at what point the story is in.
+        """
+    ))
+
+    print("director 1 said:", response, "\n")
+    return {"what_point_story_is_in": response.content}
+
+structured_director_2_llm = llm.with_structured_output(WhoNext)
+
+def director_2(state: State):
+
+    response = structured_director_2_llm.invoke(textwrap.dedent(
+        f"""
+        You are a director directing non-player characters to follow a story.
+
+        Look at this story:
+        {state["story"]}
         
-        This is what each character sees and is able to do.
-        {state["character_perceptions"]}
+        Here are your characters:
+        {state["characters"]}
+        
+        This is what has happened:
+        {state["previous_actions"]}
+        
+        You are currently at this point in the story:
+        {state["what_point_story_is_in"]}
 
-        Look at what has happened. Judge what part of the story we are in. Think what should happen next. 
-        According to what should happen next, who should act next and what should they do?
+        However, the story is in a video game. The character 'Player' is not a character you can direct, but instead a character controlled by a user.
+        Based on what point in the story you are in and what previous actions have happened, who should act next?
+        """
+    ))
 
-        Under NO CIRCUMSTANCES do you direct the player. The story is for a video game. The player character will be controlled by the user. Direct any other character to try to achieve the goal of the story.
-        Under NO CIRCUMSTANCES should a character be directed to perform an action that is not explicitly listed in their 'actions_character_can_do'. 
+    print(response)
 
+    return {"who_should_act_next": response}
+
+structured_director_3_llm = llm.with_structured_output(DirectedAction)
+
+def director_3(state: State):
+    next_character_name = state["who_should_act_next"].character    
+    
+    next_character_perception = next(
+        (perception for perception in state["character_perceptions"] 
+         if perception.character == next_character_name), 
+        None
+    )
+
+    things_this_character_sees = []
+    actions_this_character_can_do = []
+    
+    if next_character_perception is not None:
+        print("Things character sees:", next_character_perception.things_character_sees, "\n")
+        things_this_character_sees = next_character_perception.things_character_sees
+        
+        print("Actions character can do:", next_character_perception.actions_character_can_do, "\n")
+        actions_this_character_can_do = next_character_perception.actions_character_can_do
+    
+    direction = structured_director_3_llm.invoke(textwrap.dedent(
+        f"""        
+        You are a director directing non-player characters to follow a story.
+
+        Look at this story:
+        {state["story"]}
+        
+        Here are your characters:
+        {state["characters"]}
+        
+        This is what has happened:
+        {state["previous_actions"]}
+        
+        You are currently at this point in the story:
+        {state["what_point_story_is_in"]}
+
+        However, the story is in a video game. The character 'Player' is not a character you can direct, but instead a character controlled by a user.
+
+        You will direct this character.
+        {state['who_should_act_next']}
+
+        Based on what point in the story you are in and what previous actions have happened, what should this character do next?
+
+        This is what the character sees:
+        {things_this_character_sees}
+
+        This is what the character can do:
+        {actions_this_character_can_do}
+
+        Under NO CIRCUMSTANCES should a character be directed to perform an action that is not explicitly listed as a 'PossibleAction'.
         Direct the characters to follow the story as best as possible WITHIN these strict limitations.
                 
-        Characters CAN ONLY talk to another character if , but 'talk' is in the list of actions they can do to a character.
+        Characters CAN ONLY 'talk' to another character if 'talk' is in the list of actions they can do to a target character.
         If the desired story progression requires an action that is not allowed, the character MUST first perform a valid action (like 'walk' to the target) or the story should adapt.
 
         If the Player said something to a character where action isn't happening and the Player is silent after a while, bring the story back to other characters where conversations are happening.
@@ -140,16 +224,18 @@ def director_follows_scene(state: State):
             "message": "The message to say" // only include if action is "talk", otherwise omit
         }}
 
-        
         Examples:
-        - {{"character": "Harry",  "action": "sit", "target": "chair"}}
         - {{"character": "Harry",  "action": "walk", "target": "chair"}}
-        - {{"character": "Harry", "action": "talk", "target": "Violet", "message": "Hello!"}}"""
+        - {{"character": "Harry", "action": "talk", "target": "Violet", "message": "Hello!"}}
+        """
     ))
 
     return {"direction": direction}
 
 def writer_adapts_story(state: State):
+
+    print("most recent player action:", state["previous_actions"][-1], "\n")
+
     story = structured_writer_llm.invoke(textwrap.dedent(f"""
         You are writing a story. But it is in a video game where there is a player that is able to interact with the story.
 
@@ -180,31 +266,43 @@ def writer_adapts_story(state: State):
 initial_story_workflow = StateGraph(State)
 
 initial_story_workflow.add_node("writer_makes_story", writer_makes_story)
-initial_story_workflow.add_node("director_follows_scene", director_follows_scene)
+initial_story_workflow.add_node("director_1", director_1)
+initial_story_workflow.add_node("director_2", director_2)
+initial_story_workflow.add_node("director_3", director_3)
 
 initial_story_workflow.add_edge(START, "writer_makes_story")
-initial_story_workflow.add_edge("writer_makes_story", "director_follows_scene")
-initial_story_workflow.add_edge("director_follows_scene", END)
+initial_story_workflow.add_edge("writer_makes_story", "director_1")
+initial_story_workflow.add_edge("director_1", "director_2")
+initial_story_workflow.add_edge("director_2", "director_3")
+initial_story_workflow.add_edge("director_3", END)
 
 # Continue story agent
 
 continue_story_workflow = StateGraph(State)
 
-continue_story_workflow.add_node("director_follows_scene", director_follows_scene)
+continue_story_workflow.add_node("director_1", director_1)
+continue_story_workflow.add_node("director_2", director_2)
+continue_story_workflow.add_node("director_3", director_3)
 
-continue_story_workflow.add_edge(START, "director_follows_scene")
-continue_story_workflow.add_edge("director_follows_scene", END)
+continue_story_workflow.add_edge(START, "director_1")
+continue_story_workflow.add_edge("director_1", "director_2")
+continue_story_workflow.add_edge("director_2", "director_3")
+continue_story_workflow.add_edge("director_3", END)
 
 # Disrupted story agent
 
 disrupted_story_workflow = StateGraph(State)
 
 disrupted_story_workflow.add_node("writer_adapts_story", writer_adapts_story)
-disrupted_story_workflow.add_node("director_follows_scene", director_follows_scene)
+disrupted_story_workflow.add_node("director_1", director_1)
+disrupted_story_workflow.add_node("director_2", director_2)
+disrupted_story_workflow.add_node("director_3", director_3)
 
 disrupted_story_workflow.add_edge(START, "writer_adapts_story")
-disrupted_story_workflow.add_edge("writer_adapts_story", "director_follows_scene")
-disrupted_story_workflow.add_edge("director_follows_scene", END)
+disrupted_story_workflow.add_edge("writer_adapts_story", "director_1")
+disrupted_story_workflow.add_edge("director_1", "director_2")
+disrupted_story_workflow.add_edge("director_2", "director_3")
+disrupted_story_workflow.add_edge("director_3", END)
 
 # endregion
 
@@ -222,7 +320,7 @@ import torch
 import edge_tts
 import io
 from fastapi.responses import StreamingResponse
-
+import json
 
 app = FastAPI()
 
@@ -244,11 +342,6 @@ class CompletedAction(BaseModel):
 setting = "Coffee Shop"
 characters = [
     {
-        "name": "Player",
-        "role": "Male Lead",
-        "personality": "A default vibe of 'kind-hearted but slightly awkward.' Earnest, relatable, and a little unsure of themselves, especially in romance."
-    },
-    {
         "name": "Harry",
         "role": "Best Friend / Comic Relief",
         "personality": "Energetic and spontaneous with a knack for getting into ridiculous situations. He works part-time at multiple jobs and somehow manages to balance them all. He always has a story to tell and pushes the group out of their comfort zones."
@@ -266,7 +359,7 @@ characters = [
     {
         "name": "Akira",
         "role": "Café Barista",
-        "personality": "Calm and perceptive barista who seems to know exactly what everyone needs. She has an encyclopedic knowledge of coffee and tea. She offers subtle life wisdom while making drinks and notices all the relationships developing among the regulars."
+        "personality": "Calm and perceptive barista who seems to know exactly what everyone needs. She has an encyclopedic knowledge of coffee and tea. She offers subtle life wisdom while making drinks and notices all the relationships developing among the regulars. Stationary. Doesn't move from the front counter."
     },
     {
         "name": "Ren",
@@ -277,16 +370,25 @@ characters = [
         "name": "Julia",
         "role": "Creative Regular",
         "personality": "Eccentric and passionate illustrator who treats the café as her second studio. She has synesthesia and often describes sounds in terms of colors. She unintentionally gives advice through her unique perspective on life and art. Always has paint on her clothes."
-    }
+    },
+    {
+        "name": "Player",
+        "role": "User",
+        "personality": "A default vibe of 'kind-hearted but slightly awkward.' Earnest, relatable, and a little unsure of themselves, especially in romance."
+    },
 ]
 
 # -------
 
-previous_actions: list[PreviousAction] = []
+story: Optional[FiveActScene]
+previous_actions: list[PreviousAction]
 
 @app.websocket("/ws/narrative-engine")
 async def narrative_engine_endpoint(websocket: WebSocket):
     await websocket.accept()
+
+    story = None
+    previous_actions = []
 
     try:
         while True:
@@ -301,6 +403,8 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                 response = await asyncio.to_thread(
                     partial(initial_story_agent.invoke, {
                         "story": None,
+                        "what_point_story_is_in": None,
+                        "who_should_act_next": None,
                         "direction": None,
                         "previous_actions": [],
                         "characters": characters,
@@ -310,6 +414,8 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                 )
                 print("Begin story agent response:", response, "\n")
 
+                story = response["story"]
+
                 response_data = {
                     "type": "director_response",
                     "character": response["direction"].character,
@@ -318,8 +424,8 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                 }
                 if hasattr(response["direction"], "message") and response["direction"].message is not None:
                     response_data["message"] = response["direction"].message
-                
-                print("Director response:", response_data, "\n")
+
+                print("(Begin story) Director response:", response_data, "\n")
 
                 await websocket.send_json(response_data)
                 continue
@@ -350,9 +456,14 @@ async def narrative_engine_endpoint(websocket: WebSocket):
 
                 else:
                     continue_story_agent = continue_story_workflow.compile()
+
+                    print("completed story direct:", story, "\n")
+
                     response = await asyncio.to_thread(
                         partial(continue_story_agent.invoke, {
-                                "story": None,
+                                "story": story,
+                                "what_point_story_is_in": None,
+                                "who_should_act_next": None,
                                 "direction": None,
                                 "characters": characters,
                                 "previous_actions": previous_actions,
@@ -404,7 +515,9 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                 disrupted_story_agent = disrupted_story_workflow.compile()
                 response = await asyncio.to_thread(
                     partial(disrupted_story_agent.invoke, {
-                        "story": None,
+                        "story": story,
+                        "what_point_story_is_in": None,
+                        "who_should_act_next": None,
                         "direction": None,
                         "characters": characters,
                         "previous_actions": previous_actions,
