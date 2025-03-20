@@ -15,7 +15,7 @@ public class TESTBeginStoryTrigger160325 : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         // Check if the colliding object is the player
-        if (!hasTriggered && other.CompareTag("Player")) 
+        if (!hasTriggered && other.CompareTag("Player"))
         {
             TriggerStory();
         }
@@ -37,9 +37,9 @@ public class TESTBeginStoryTrigger160325 : MonoBehaviour
     private void TriggerStory()
     {
         Debug.Log("Begin Story trigger activated by S key or collision");
-        TESTNetworkManager140325.Instance.SendBeginStory();
+        NetworkManager.Instance.SendBeginStory();
         hasTriggered = true;
-        
+
         // Optionally, you can destroy the trigger after it's been used
         Destroy(gameObject);
     }

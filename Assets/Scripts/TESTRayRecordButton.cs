@@ -9,23 +9,23 @@ public class TESTRayRecordButton : MonoBehaviour
     RaycastHit NpcImTalkingTo;
 
 
-    void Start() 
+    void Start()
     {
         layerMask = LayerMask.GetMask("NPC");
-        XRInputManager.Instance.RecordButtonPressed += HandleRecordButton;
+        XRInputManager.Instance.AButtonPressed += HandleRecordButton;
     }
 
     void OnDestroy()
     {
-        XRInputManager.Instance.RecordButtonPressed -= HandleRecordButton;
+        XRInputManager.Instance.AButtonPressed -= HandleRecordButton;
     }
 
-    void FixedUpdate() 
+    void FixedUpdate()
     {
         RaycastHit hit;
         if (Physics.Raycast(transform.position, transform.TransformDirection(Vector3.forward), out hit, 10, layerMask))
-        { 
-            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * hit.distance, Color.yellow); 
+        {
+            Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * hit.distance, Color.yellow);
             Debug.Log("Did Hit");
             raycastHit = hit;
         }
@@ -56,7 +56,7 @@ public class TESTRayRecordButton : MonoBehaviour
     // tell that person what you said
     void TellNpcWhatISaid(string words)
     {
-        NpcController npc = NpcImTalkingTo.collider.GetComponent<NpcController>();
+        NpcControllerOld npc = NpcImTalkingTo.collider.GetComponent<NpcControllerOld>();
         npc.Tell(words);
     }
 }

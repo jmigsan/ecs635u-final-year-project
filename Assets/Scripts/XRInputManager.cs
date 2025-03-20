@@ -7,12 +7,14 @@ public class XRInputManager : MonoBehaviour
 {
     public static XRInputManager Instance { get; private set; }
 
-    public InputActionReference RecordButtonReference; // Drag your Input Action Reference here in the Inspector
-    public InputActionReference XButtonReference; // Drag your Input Action Reference here in the Inspector
-    public InputActionReference YButtonReference; // Drag your Input Action Reference here in the Inspector
-    
+    public InputActionReference AButtonReference;
+    public InputActionReference BButtonReference;
+    public InputActionReference XButtonReference;
+    public InputActionReference YButtonReference;
+
     public delegate void ButtonStateChangedHandler(bool isPressed);
-    public event ButtonStateChangedHandler RecordButtonPressed;
+    public event ButtonStateChangedHandler AButtonPressed;
+    public event ButtonStateChangedHandler BButtonPressed;
     public event ButtonStateChangedHandler XButtonPressed;
     public event ButtonStateChangedHandler YButtonPressed;
 
@@ -27,20 +29,28 @@ public class XRInputManager : MonoBehaviour
     }
     void Start()
     {
-        RecordButtonReference.action.started += OnRecordButtonPressed;
-        RecordButtonReference.action.canceled += OnRecordButtonReleased;
+        AButtonReference.action.started += OnAButtonPressed;
+        AButtonReference.action.canceled += OnAButtonReleased;
+
+        BButtonReference.action.started += OnBButtonPressed;
+        BButtonReference.action.canceled += OnBButtonReleased;
 
         XButtonReference.action.started += OnXButtonPressed;
         XButtonReference.action.canceled += OnXButtonReleased;
+
         YButtonReference.action.started += OnYButtonPressed;
         YButtonReference.action.canceled += OnYButtonReleased;
     }
 
     private void OnDestroy()
     {
-        RecordButtonReference.action.started -= OnRecordButtonPressed; // Unsubscribe to prevent memory leaks
-        RecordButtonReference.action.canceled -= OnRecordButtonReleased;
-        RecordButtonReference.action.Disable(); // Disable the Input Action when the script is destroyed
+        AButtonReference.action.started -= OnAButtonPressed;
+        AButtonReference.action.canceled -= OnAButtonReleased;
+        AButtonReference.action.Disable();
+
+        BButtonReference.action.started -= OnBButtonPressed;
+        BButtonReference.action.canceled -= OnBButtonReleased;
+        BButtonReference.action.Disable();
 
         XButtonReference.action.started -= OnXButtonPressed;
         XButtonReference.action.canceled -= OnXButtonReleased;
@@ -51,18 +61,32 @@ public class XRInputManager : MonoBehaviour
         YButtonReference.action.Disable();
     }
 
-    void OnRecordButtonPressed(InputAction.CallbackContext context)
+    void OnAButtonPressed(InputAction.CallbackContext context)
     {
         bool isPressed = context.ReadValueAsButton();
-        RecordButtonPressed?.Invoke(isPressed);
-        Debug.Log($"Record Button: {isPressed}");
+        AButtonPressed?.Invoke(isPressed);
+        Debug.Log($"A Button: {isPressed}");
     }
 
-    void OnRecordButtonReleased(InputAction.CallbackContext context)
+    void OnAButtonReleased(InputAction.CallbackContext context)
     {
         bool isPressed = context.ReadValueAsButton();
-        RecordButtonPressed?.Invoke(isPressed);
-        Debug.Log($"Record Button: {isPressed}");
+        AButtonPressed?.Invoke(isPressed);
+        Debug.Log($"A Button: {isPressed}");
+    }
+
+    void OnBButtonPressed(InputAction.CallbackContext context)
+    {
+        bool isPressed = context.ReadValueAsButton();
+        BButtonPressed?.Invoke(isPressed);
+        Debug.Log($"B Button: {isPressed}");
+    }
+
+    void OnBButtonReleased(InputAction.CallbackContext context)
+    {
+        bool isPressed = context.ReadValueAsButton();
+        BButtonPressed?.Invoke(isPressed);
+        Debug.Log($"B Button: {isPressed}");
     }
 
     void OnXButtonPressed(InputAction.CallbackContext context)
