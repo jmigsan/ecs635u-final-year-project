@@ -3,10 +3,10 @@ import edge_tts
 
 async def main():
     # Select a voice (you can change this to other available voices)
-    voice = "ja-JP-NanamiNeural"
+    voice = "en-US-AriaNeural"
     
     # Text you want to convert to speech
-    text = "手伝ってくれてありがとう、Violet。実は、Emilyに告白しようと思っているんだ。"
+    text = "Hello there. How are you today?"
     
     # Create a communication object
     communicate = edge_tts.Communicate(text, voice)

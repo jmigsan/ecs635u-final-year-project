@@ -10,8 +10,10 @@ from pydantic import BaseModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 import os
+from dotenv import load_dotenv
 
-os.environ['GOOGLE_API_KEY'] = 'AIzaSyBbgaNd1O9xLJK1uai_i8fwGwgMDMRwPjA'
+load_dotenv()
+
 llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 
 from pydantic import BaseModel, Field
@@ -29,7 +31,7 @@ class WhoNext(BaseModel):
 
 # ------ Director/Writer BaseModel
 class PreviousAction(BaseModel):
-    time: str
+    time: int
     character: str
     action: str
     target: str
@@ -74,7 +76,6 @@ class CharacterPerception(BaseModel):
 
 class State(TypedDict):
     story: FiveActScene
-    what_point_story_is_in: str
     who_should_act_next: WhoNext
     direction: DirectedAction
     previous_actions: list[PreviousAction]
@@ -90,67 +91,92 @@ structured_writer_llm = llm.with_structured_output(FiveActScene)
 def writer_makes_story(state: State):
     story = structured_writer_llm.invoke(textwrap.dedent(
         f"""
-        Write an outline for a scene for a romantic slice of life anime.
-        However, the story is for a video game. One character is the user, who is the 'Player'.
+        Write an outline for a scene in a romantic slice-of-life anime, designed for a video game. In this game, one character is the user, referred to as the "Player". However, the story should unfold independently of the Player, who will only serve as a passive observer.
 
-        Here are your characters.
+        Below are the characters available:
         {state["characters"]}
 
-        Use this setting:
+        The scene is set in:
         {state["setting"]}
-        """))
 
-    return {"story": story}
+        Guidelines:
+        - The narrative should highlight a gentle, romantic atmosphere typical of slice-of-life anime.
+        - The Player does not influence the story; they simply observe the events.
+        - The Player is still part of the story. The Player is seen by other characters and has relationships with them. 
+        - In the video game context, characters are restricted to only "talk" and "walk" actions.
+        - Do not include any actions that require additional interactions (e.g., "spill coffee", "jump", or "wave").
 
-structured_director_llm = llm.with_structured_output(DirectedAction)
-
-def director_1(state: State):
-
-    response = llm.invoke(textwrap.dedent(
-        f"""
-        Look at this story:
-        {state["story"]}
-
-        The story is set in the following setting:
-        {state["setting"]}
-        
-        Here are your characters:
-        {state["characters"]}
-        
-        This is what has happened:
-        {state["previous_actions"]}
-
-        Based on the previous actions, determine at what point the story is in.
+        Create an engaging and thoughtful outline that respects the setting and constraints.
         """
     ))
 
-    print("director 1 said:", response, "\n")
-    return {"what_point_story_is_in": response.content}
+
+    return {"story": story}
+
+# def director_1(state: State):
+
+#     response = llm.invoke(textwrap.dedent(
+#         f"""
+#         Look at this story:
+#         {state["story"]}
+
+#         The story is set in the following setting:
+#         {state["setting"]}
+        
+#         Here are your characters:
+#         {state["characters"]}
+        
+#         This is what has happened:
+#         {state["previous_actions"]}
+
+#         Based on the previous actions, determine at what point the story is in.
+#         """
+#     ))
+
+#     print("director 1 said:", response, "\n")
+#     return {"what_point_story_is_in": response.content}
 
 structured_director_2_llm = llm.with_structured_output(WhoNext)
 
 def director_2(state: State):
 
     response = structured_director_2_llm.invoke(textwrap.dedent(
-        f"""
-        You are a director directing non-player characters to follow a story.
+    f"""
+        You are a director guiding non-player characters (NPCs) to follow the story's progression.
 
-        Look at this story:
+        Current Context:
+        ----------------
+        Story:
         {state["story"]}
-        
-        Here are your characters:
-        {state["characters"]}
-        
-        This is what has happened:
-        {state["previous_actions"]}
-        
-        You are currently at this point in the story:
-        {state["what_point_story_is_in"]}
 
-        However, the story is in a video game. The character 'Player' is not a character you can direct, but instead a character controlled by a user.
-        Based on what point in the story you are in and what previous actions have happened, who should act next?
+        Characters:
+        {state["characters"]}
+
+        Recent Narrative Actions:
+        {state["previous_actions"]}
+
+        IMPORTANT:
+        - The "Player" is controlled by a user and should not be directed.
+
+        Instructions:
+        1. Review the most recent action:
+        {state["previous_actions"][-1]}
+        
+        2. Determine the current narrative state based on the provided context.
+
+        3. Decide which character should act next. Remember:
+        - If one character has just walked up to another, the next action must involve dialogue.
+        - If a character asks another a question, the responding character must answer immediately.
+        - If the Player interacts but then remains silent, shift the narrative focus to conversations among other characters.
+        - If a character has been conversing with the Player repeatedly without a response, involve a different character to maintain momentum.
+        - If a character has been conversing with another character about something and it looks like the conversation is going in circles, advance the story by bringing up another topic or another character.
+        - If a conversation has been interrupted by the Player and it seems like the Player's conversation is done, go back to the previously ongoing conversation.
+
+        Output:
+        Who should act next?
         """
     ))
+
 
     print(response)
 
@@ -159,13 +185,11 @@ def director_2(state: State):
 structured_director_3_llm = llm.with_structured_output(DirectedAction)
 
 def director_3(state: State):
-    next_character_name = state["who_should_act_next"].character    
-    
-    next_character_perception = next(
-        (perception for perception in state["character_perceptions"] 
-         if perception.character == next_character_name), 
-        None
-    )
+    next_character_perception = None
+    for perception in state["character_perceptions"]:
+        if perception.character == state["who_should_act_next"].character:
+            next_character_perception = perception
+            break
 
     things_this_character_sees = []
     actions_this_character_can_do = []
@@ -177,87 +201,109 @@ def director_3(state: State):
         print("Actions character can do:", next_character_perception.actions_character_can_do, "\n")
         actions_this_character_can_do = next_character_perception.actions_character_can_do
     
-    direction = structured_director_3_llm.invoke(textwrap.dedent(
-        f"""        
-        You are a director directing non-player characters to follow a story.
+    prompt = textwrap.dedent(
+        f"""--- Director Instructions—Rules & Fallback Procedures ---
 
-        Look at this story:
-        {state["story"]}
+        1. PERMITTED ACTIONS ONLY:
+        - A character may only perform an action explicitly listed in actions_this_character_can_do.
+        - Characters can only "talk" to another character if "talk" appears as an allowed action on that target.
+
+        2. FALLBACK BEHAVIOR:
+        - If an intended action is not permitted:
+            - Example: If the narrative requires a "talk" action but "talk" is not in the allowed actions, then first instruct the character to perform a valid precursor action (e.g., "walk") toward the intended target.
+            - Once the precursor action establishes the proper narrative context (e.g., approaching the other character), call for the conversational action if it becomes available on a subsequent turn.
+
+        3. SITUATION-SPECIFIC GUIDELINES:
+        - If someone has just walked up to someone, the next action must be dialogue—someone must say something.
+        - If one character asks another something, the other character must respond in their next turn.
+        - If the Player (a user-controlled character) is silent after speaking or no clear narrative action is occurring, direct the story to involve conversation among other characters to keep momentum.
+        - Additionally, if a character has been talking to the Player more than once without a response from the Player in between, use another character to advance the narrative.
+        - If a character has been conversing with another character about something and it looks like the conversation is going in circles, advance the story by bringing up another topic or another character.
+
+
+        4. OVERVIEW OF CONTEXT:
+        - Story: {state["story"]}
+        - Characters Available: {state["characters"]}
+        - Previous Actions: {state["previous_actions"]}
+        - CURRENT ACTOR: {state['who_should_act_next'].character}
+            Sees: {things_this_character_sees}
+        - ALLOWED ACTIONS: {actions_this_character_can_do}
+
+        5. DIRECTOR TASK:
+        - You are directing non-player characters (NPCs) to follow the story's progression within the above constraints.
+        - Remember: the "Player" is controlled by a user and should NOT be directed.
+        - Determine what {state['who_should_act_next'].character} should do next based on the story context, current observations, and their allowed actions.
+        - CRITICAL CHECK: Before instructing an action, verify that it is listed as an allowed "PossibleAction". If the natural story progression requires an action that is not allowed (e.g., "talk"), then first direct a permitted action (like "walk") that will logically set up the intended narrative and enable the eventual transition into the desired action.
+
+        YOUR TASK:
+        Direct {state['who_should_act_next'].character} on their next move. Ensure that if a conversation is required or expected by the narrative, proper steps (like moving closer or initiating a precursor action) are taken if "talk" is not currently permitted.
+
+        --- End of Director Prompt ---"""
+    )
+
+        # 4. LANGUAGE REQUIREMENT:
+        # - When characters speak (using any dialogue action), they MUST do so in Tagalog (or Taglish when appropriate).
+
+        #5.directortask
+        # Remember: All dialogue must be in Tagalog (or Taglish).
         
-        Here are your characters:
-        {state["characters"]}
-        
-        This is what has happened:
-        {state["previous_actions"]}
-        
-        You are currently at this point in the story:
-        {state["what_point_story_is_in"]}
+    # print("Director 3 prompt:", prompt, "\n")
 
-        However, the story is in a video game. The character 'Player' is not a character you can direct, but instead a character controlled by a user.
-
-        You will direct this character.
-        {state['who_should_act_next']}
-
-        Based on what point in the story you are in and what previous actions have happened, what should this character do next?
-
-        This is what the character sees:
-        {things_this_character_sees}
-
-        This is what the character can do:
-        {actions_this_character_can_do}
-
-        Under NO CIRCUMSTANCES should a character be directed to perform an action that is not explicitly listed as a 'PossibleAction'.
-        Direct the characters to follow the story as best as possible WITHIN these strict limitations.
-                
-        Characters CAN ONLY 'talk' to another character if 'talk' is in the list of actions they can do to a target character.
-        If the desired story progression requires an action that is not allowed, the character MUST first perform a valid action (like 'walk' to the target) or the story should adapt.
-
-        If the Player said something to a character where action isn't happening and the Player is silent after a while, bring the story back to other characters where conversations are happening.
-
-        Character MUST speak in Tagalog (or Taglish when appropriate) if they are talking.
-        
-        Reply in JSON with the following structure:
-        {{
-            "character": "Name of character doing the action",
-            "action": "Action to perform (sit, wave, talk, etc.)",
-            "target": "Entity name of character or object",
-            "message": "The message to say" // only include if action is "talk", otherwise omit
-        }}
-
-        Examples:
-        - {{"character": "Harry",  "action": "walk", "target": "chair"}}
-        - {{"character": "Harry", "action": "talk", "target": "Violet", "message": "Hello!"}}
-        """
-    ))
+    direction = structured_director_3_llm.invoke(prompt)
 
     return {"direction": direction}
+
+    # I had this before, but then it wrote json for the message once. maybe it writes json like that because i told it to,
+    # Reply in JSON with the following structure:
+    # {{
+    #     "character": "Name of character doing the action",
+    #     "action": "Action to perform (sit, wave, talk, etc.)",
+    #     "target": "Entity name of character or object",
+    #     "message": "The message to say" // only include if action is "talk", otherwise omit
+    # }}
+
+    # Examples:
+    # - {{"character": "Harry",  "action": "walk", "target": "chair"}}
+    # - {{"character": "Harry", "action": "talk", "target": "Violet", "message": "Hello!"}}
 
 def writer_adapts_story(state: State):
 
     print("most recent player action:", state["previous_actions"][-1], "\n")
 
-    story = structured_writer_llm.invoke(textwrap.dedent(f"""
-        You are writing a story. But it is in a video game where there is a player that is able to interact with the story.
+    story = structured_writer_llm.invoke(textwrap.dedent(
+        f"""
+        You are tasked with updating the narrative of a video game. In this game, the story unfolds on its own until the Player (controlled by the user) interjects. When the Player acts, their input should be integrated into the narrative, altering the story's course accordingly.
 
-        Here is the current story:
+        --- Current Context ---
+        Story:
         {state["story"]}
 
-        The story is set in the following setting:
+        Setting:
         {state["setting"]}
 
-        Here are your characters:
+        Characters:
         {state["characters"]}
 
-        Here is what has happened:
+        Narrative History:
         {state["previous_actions"]}
-        
-        Determine how far into the story the current events are in. 
 
-        This is the most recent player action:
+        --- Recent Player Interaction ---
+        Most Recent Player Action:
         {state["previous_actions"][-1]}
 
-        Given the current story and the most recent player action, adapt the story, incorporating the player's most recent action. Make major changes if need be, but if the player is generally following the story, minor to no changes are fine.
-        """))
+        --- Instructions ---
+        1. Assess how far along the narrative currently is.
+        2. Adapt the story to incorporate the Player's latest action:
+        - If the action is disruptive or significantly different from the ongoing narrative, introduce substantial changes.
+        - If the Player's input aligns reasonably with the existing story, make only minor adjustments.
+        3. Even though the Player generally isn't part of the story, treat their recent action as a catalyst to alter or steer the narrative going forward.
+        4. Ensure the updated narrative remains coherent, engaging, and true to the game's setting and tone.
+
+        Output the updated story outline that reflects these changes.
+        """
+    ))
+
+
 
     return {"story": story}
 
@@ -266,13 +312,11 @@ def writer_adapts_story(state: State):
 initial_story_workflow = StateGraph(State)
 
 initial_story_workflow.add_node("writer_makes_story", writer_makes_story)
-initial_story_workflow.add_node("director_1", director_1)
 initial_story_workflow.add_node("director_2", director_2)
 initial_story_workflow.add_node("director_3", director_3)
 
 initial_story_workflow.add_edge(START, "writer_makes_story")
-initial_story_workflow.add_edge("writer_makes_story", "director_1")
-initial_story_workflow.add_edge("director_1", "director_2")
+initial_story_workflow.add_edge("writer_makes_story", "director_2")
 initial_story_workflow.add_edge("director_2", "director_3")
 initial_story_workflow.add_edge("director_3", END)
 
@@ -280,12 +324,10 @@ initial_story_workflow.add_edge("director_3", END)
 
 continue_story_workflow = StateGraph(State)
 
-continue_story_workflow.add_node("director_1", director_1)
 continue_story_workflow.add_node("director_2", director_2)
 continue_story_workflow.add_node("director_3", director_3)
 
-continue_story_workflow.add_edge(START, "director_1")
-continue_story_workflow.add_edge("director_1", "director_2")
+continue_story_workflow.add_edge(START, "director_2")
 continue_story_workflow.add_edge("director_2", "director_3")
 continue_story_workflow.add_edge("director_3", END)
 
@@ -294,33 +336,27 @@ continue_story_workflow.add_edge("director_3", END)
 disrupted_story_workflow = StateGraph(State)
 
 disrupted_story_workflow.add_node("writer_adapts_story", writer_adapts_story)
-disrupted_story_workflow.add_node("director_1", director_1)
 disrupted_story_workflow.add_node("director_2", director_2)
 disrupted_story_workflow.add_node("director_3", director_3)
 
 disrupted_story_workflow.add_edge(START, "writer_adapts_story")
-disrupted_story_workflow.add_edge("writer_adapts_story", "director_1")
-disrupted_story_workflow.add_edge("director_1", "director_2")
+disrupted_story_workflow.add_edge("writer_adapts_story", "director_2")
 disrupted_story_workflow.add_edge("director_2", "director_3")
 disrupted_story_workflow.add_edge("director_3", END)
 
 # endregion
 
 # region FastAPI
-# Fast API
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
 import time
 import asyncio
 from functools import partial
-import whisper
-import tempfile
 import os
-import torch
 import edge_tts
 import io
 from fastapi.responses import StreamingResponse
-import json
+import requests
 
 app = FastAPI()
 
@@ -359,7 +395,7 @@ characters = [
     {
         "name": "Akira",
         "role": "Café Barista",
-        "personality": "Calm and perceptive barista who seems to know exactly what everyone needs. She has an encyclopedic knowledge of coffee and tea. She offers subtle life wisdom while making drinks and notices all the relationships developing among the regulars. Stationary. Doesn't move from the front counter."
+        "personality": "Calm and perceptive barista who seems to know exactly what everyone needs. She has an encyclopedic knowledge of coffee and tea. She offers subtle life wisdom while making drinks and notices all the relationships developing among the regulars."
     },
     {
         "name": "Ren",
@@ -380,15 +416,20 @@ characters = [
 
 # -------
 
-story: Optional[FiveActScene]
-previous_actions: list[PreviousAction]
-
 @app.websocket("/ws/narrative-engine")
 async def narrative_engine_endpoint(websocket: WebSocket):
     await websocket.accept()
 
-    story = None
-    previous_actions = []
+    story: Optional[FiveActScene] = None
+    previous_actions: list[PreviousAction] = [
+        PreviousAction(
+            time=0,
+            character="System",
+            action="start_story",
+            target="All",
+            message="The story has started."
+        )
+    ]
 
     try:
         while True:
@@ -403,10 +444,9 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                 response = await asyncio.to_thread(
                     partial(initial_story_agent.invoke, {
                         "story": None,
-                        "what_point_story_is_in": None,
                         "who_should_act_next": None,
                         "direction": None,
-                        "previous_actions": [],
+                        "previous_actions": previous_actions,
                         "characters": characters,
                         "setting": setting,
                         "character_perceptions": begin_story.character_perceptions
@@ -437,7 +477,7 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                 message = raw_data.get("message")
 
                 action = PreviousAction(
-                    time=completed_direction.time, 
+                    time=previous_actions[-1].time + 1, 
                     character=completed_direction.character, 
                     action=completed_direction.action,
                     target=completed_direction.target,
@@ -462,7 +502,6 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                     response = await asyncio.to_thread(
                         partial(continue_story_agent.invoke, {
                                 "story": story,
-                                "what_point_story_is_in": None,
                                 "who_should_act_next": None,
                                 "direction": None,
                                 "characters": characters,
@@ -496,14 +535,14 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                     # this one is special, because the message is sent from npcs, not the player
                     # it's called an interruption because it affects the story
                     action = PreviousAction(
-                        time=player_interruption.time, 
+                        time=previous_actions[-1].time + 1, 
                         character="Player", 
                         action="player_silence",
                         target=player_interruption.character,
                         message=message)
                 else:
                     action = PreviousAction(
-                        time=player_interruption.time, 
+                        time=previous_actions[-1].time + 1, 
                         character=player_interruption.character, 
                         action=player_interruption.action,
                         target=player_interruption.target,
@@ -516,7 +555,6 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                 response = await asyncio.to_thread(
                     partial(disrupted_story_agent.invoke, {
                         "story": story,
-                        "what_point_story_is_in": None,
                         "who_should_act_next": None,
                         "direction": None,
                         "characters": characters,
@@ -555,28 +593,48 @@ async def narrative_engine_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         print("Client disconnected")
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-whisper_model = whisper.load_model("base", download_root="E:\Code\AppData\whisper").to(device)
+# endregion
+
+# region Whisper
 
 class TranscribeResponse(BaseModel):
     transcription: str
 
 @app.post("/transcribe")
 async def transcribe_audio(audio: UploadFile = File(...)) -> TranscribeResponse:
-    temp_name = None
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio:
-        content = await audio.read()
-        temp_audio.write(content)
-        temp_audio.flush()
-        temp_name = temp_audio.name
-    
-    result = whisper_model.transcribe(temp_name)
+    url = "https://api.lemonfox.ai/v1/audio/transcriptions"
 
-    print("Transcription:", result["text"], "\n")
+    api_key = os.getenv("LEMONFOX_API_KEY")
+    headers = {
+        "Authorization": f"Bearer {api_key}"
+    }
+
+    data = {
+        "language": "tagalog",
+        "response_format": "json"
+    }
     
-    os.unlink(temp_name)
+    content = await audio.read()
+    file_obj = io.BytesIO(content)
+    file_obj.name = audio.filename or "audio.wav"
+    files = {
+        "file": file_obj
+    }
     
-    return TranscribeResponse(transcription=str(result["text"]))
+    response = requests.post(url, headers=headers, files=files, data=data)
+    
+    if response.status_code == 200:
+        result = response.json()
+        transcription = result.get("text", "")
+        print("Transcription:", transcription, "\n")
+        return TranscribeResponse(transcription=transcription)
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
+        return TranscribeResponse(transcription="Error during transcription")
+
+# endregion
+
+# region TTS
 
 class TtsQuery(BaseModel):
     words: str

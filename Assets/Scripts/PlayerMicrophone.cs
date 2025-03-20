@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -29,8 +30,9 @@ public class PlayerMicrophone : MonoBehaviour
     RaycastHit NpcImTalkingTo;
     GameObject lastHitObject = null;
 
-    public event Action<bool> PlayerIsTalking;
+    public TextMeshPro userSubtitles;
 
+    public event Action<bool> PlayerIsTalking;
 
     void Start()
     {
@@ -40,6 +42,8 @@ public class PlayerMicrophone : MonoBehaviour
         raycastLayerMask = LayerMask.GetMask("NPC");
 
         XRInputManager.Instance.AButtonPressed += HandleRecordButton;
+
+        userSubtitles.text = "";
     }
 
     void OnDestroy()
@@ -213,7 +217,17 @@ public class PlayerMicrophone : MonoBehaviour
         NpcController npc = NpcImTalkingTo.collider.GetComponent<NpcController>();
         string targetName = npc.entityName;
 
+        string wordsFormatted = "You: " + words;
+        StartCoroutine(DisplayUserSubtitles(wordsFormatted));
+
         SendCompletedAction("player_interruption", "talk", targetName, words);
+    }
+
+    IEnumerator DisplayUserSubtitles(string words)
+    {
+        userSubtitles.text = words;
+        yield return new WaitForSeconds(5);
+        userSubtitles.text = "";
     }
 
     void SendCompletedAction(string type, string action, string target, string message)
