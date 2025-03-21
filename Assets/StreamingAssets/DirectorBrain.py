@@ -430,6 +430,7 @@ async def narrative_engine_endpoint(websocket: WebSocket):
             message="The story has started."
         )
     ]
+    potential_directions: list[DirectedAction] = []
 
     try:
         while True:
@@ -467,6 +468,17 @@ async def narrative_engine_endpoint(websocket: WebSocket):
 
                 print("(Begin story) Director response:", response_data, "\n")
 
+                if response["direction"].action == "talk":
+                    potential_directions.append(await queue_potential_direction(
+                        story,
+                        previous_actions,
+                        begin_story.character_perceptions,
+                        response_data["character"],
+                        response_data["action"],
+                        response_data["target"],
+                        response_data["message"]
+                    ))
+
                 await websocket.send_json(response_data)
                 continue
 
@@ -486,7 +498,18 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                 previous_actions.append(action)
                 print("(Completed direction) Previous actions:", previous_actions, "\n")
 
-                if completed_direction.action == "talk" and completed_direction.target == "Player":
+                if potential_directions:
+                    preloaded_direction = potential_directions.pop(0)
+                    response_data = {
+                        "type": "director_response",
+                        "character": preloaded_direction.character,
+                        "action": preloaded_direction.action,
+                        "target": preloaded_direction.target
+                    }
+                    if hasattr(preloaded_direction, "message") and preloaded_direction.message is not None:
+                        response_data["message"] = preloaded_direction.message
+
+                elif completed_direction.action == "talk" and completed_direction.target == "Player":
                     response_data = {
                         "type": "director_response",
                         "character": completed_direction.character,
@@ -522,12 +545,25 @@ async def narrative_engine_endpoint(websocket: WebSocket):
 
                 print("(Completed direction) Director response:", response_data, "\n")
 
+                if response_data["action"] == "talk":
+                    potential_directions.append(await queue_potential_direction(
+                        story,
+                        previous_actions,
+                        completed_direction.character_perceptions,
+                        response_data["character"],
+                        response_data["action"],
+                        response_data["target"],
+                        response_data["message"]
+                    ))
+
                 await websocket.send_json(response_data)
                 continue
             
             if message_type == "player_interruption":
                 player_interruption = CompletedAction(**raw_data)
                 print("Player interruption:", player_interruption, "\n")
+
+                potential_directions = []
 
                 message = raw_data.get("message")
 
@@ -576,6 +612,17 @@ async def narrative_engine_endpoint(websocket: WebSocket):
 
                 print("(Player interruption) Director response:", response_data, "\n")
 
+                if response["direction"].action == "talk":
+                    potential_directions.append(await queue_potential_direction(
+                        story,
+                        previous_actions,
+                        player_interruption.character_perceptions,
+                        response_data["character"],
+                        response_data["action"],
+                        response_data["target"],
+                        response_data["message"]
+                    ))
+
                 await websocket.send_json(response_data)
                 continue
             
@@ -592,6 +639,58 @@ async def narrative_engine_endpoint(websocket: WebSocket):
     
     except WebSocketDisconnect:
         print("Client disconnected")
+
+async def queue_potential_direction(story: Optional[FiveActScene], previous_actions: list[PreviousAction], character_perceptions: list[CharacterPerception], character: str, action: str, target: str, message: Optional[str] = None):
+    temp_previous_actions = previous_actions.copy()
+
+    optimistic_previous_action = PreviousAction(
+        time=temp_previous_actions[-1].time + 1, 
+        character=character, 
+        action=action,
+        target=target,
+        message=message)
+    
+    temp_previous_actions.append(optimistic_previous_action)
+    print("(Potential direction) Previous actions:", temp_previous_actions, "\n")
+
+    optimistic_direction: DirectedAction
+
+    if action == "talk" and target == "Player":
+        optimistic_direction = DirectedAction(
+            character=character,
+            action="wait_for_player",
+            target="Player",
+            message=None
+        )
+    else:
+        continue_story_agent = continue_story_workflow.compile()
+
+        response = await asyncio.to_thread(
+            partial(continue_story_agent.invoke, {
+                "story": story,
+                "who_should_act_next": None,
+                "direction": None,
+                "characters": characters,
+                "previous_actions": previous_actions,
+                "setting": setting,
+                "character_perceptions": character_perceptions
+            })
+        )
+
+        directed_message = None
+        if hasattr(response["direction"], "message") and response["direction"].message is not None:
+            directed_message = response["direction"].message
+        
+        optimistic_direction =  DirectedAction(
+            character=response["direction"].character,
+            action=response["direction"].action,
+            target=response["direction"].target,
+            message=directed_message
+        )
+
+    print("(Potential direction) Director response:", optimistic_direction, "\n")
+
+    return optimistic_direction
 
 # endregion
 
