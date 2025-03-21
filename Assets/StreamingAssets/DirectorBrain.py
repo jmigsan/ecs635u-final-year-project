@@ -671,7 +671,7 @@ async def queue_potential_direction(story: Optional[FiveActScene], previous_acti
                 "who_should_act_next": None,
                 "direction": None,
                 "characters": characters,
-                "previous_actions": previous_actions,
+                "previous_actions": temp_previous_actions,
                 "setting": setting,
                 "character_perceptions": character_perceptions
             })
