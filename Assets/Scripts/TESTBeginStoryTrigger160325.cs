@@ -3,6 +3,9 @@ using UnityEngine.InputSystem; // Required for new Input System
 
 public class TESTBeginStoryTrigger160325 : MonoBehaviour
 {
+    public CafeCoupleGameManager cafeCoupleGameManager1;
+    public CafeCoupleGameManager cafeCoupleGameManager2;
+    
     private bool hasTriggered = false; // Flag to prevent multiple triggers
     private Keyboard keyboard;
 
@@ -37,7 +40,9 @@ public class TESTBeginStoryTrigger160325 : MonoBehaviour
     private void TriggerStory()
     {
         Debug.Log("Begin Story trigger activated by S key or collision");
-        NetworkManager.Instance.SendBeginStory();
+        // NetworkManager.Instance.SendBeginStory();
+        cafeCoupleGameManager1.SendBeginConversation();
+        cafeCoupleGameManager2.SendBeginConversation();
         hasTriggered = true;
 
         // Optionally, you can destroy the trigger after it's been used

@@ -33,6 +33,9 @@ class ConversationMessage(BaseModel):
     message: str
     target: str
 
+class ConversationMessages(BaseModel):
+    messages: list[ConversationMessage]
+
 class BeginState(TypedDict):
     character_1: CharacterProfile
     character_2: CharacterProfile
@@ -49,7 +52,7 @@ class ContinueState(TypedDict):
     new_tone: Optional[str]
     new_conversation: Optional[list[ConversationMessage]]
     
-structured_conversation_llm = llm.with_structured_output(list[ConversationMessage])
+structured_conversation_llm = llm.with_structured_output(ConversationMessages)
 
 def begin_conversation(state: BeginState):
     print("State:", state)
@@ -59,10 +62,10 @@ def begin_conversation(state: BeginState):
         Write a lengthy dialogue between two characters.
 
         Character 1:
-        {state["character_1"].dict()}
+        {state["character_1"]}
 
         Character 2:
-        {state["character_2"].dict()}
+        {state["character_2"]}
 
         This is their relationship with each other:
         {state["relationship"]}
@@ -73,6 +76,8 @@ def begin_conversation(state: BeginState):
         They are sitting next to each other at the same table in a coffee shop.
         The entire scene takes place within the coffee shop setting, without either character relying on external props or actions beyond talking to each other.
         Make it lengthy - at least 30 turns per character.
+
+        The characters MUST speak in Tagalog/Taglish.
         """
     )
 
@@ -89,28 +94,28 @@ def continue_conversation_new_tone(state: ContinueState):
         These two characters have just had this conversation. They have finished.
 
         Character 1:
-        {state["character_1"].dict()}
+        {state["character_1"]}
 
         Character 2:
-        {state["character_2"].dict()}
+        {state["character_2"]}
 
         Conversation:
-        {state["conversation"]}
+        {state["previous_conversation"]}
 
         This is their relationship with each other:
         {state["relationship"]}
 
         This is the tone of their previous conversation:
-        {state["tone"]}
+        {state["previous_tone"]}
 
-        Continue a conversation between them. They have sat in silence. And after a while start another conversation.
+        They have sat in silence. And after a while are about to start another conversation.
         In one word, generate a new tone for a new conversation between them.
         """
     )
     response = llm.invoke(prompt)
-    print("new_tone response:", response)
+    print("new_tone response:", response.content)
 
-    return {"new_tone": response}
+    return {"new_tone": response.content}
 
 def continue_conversation(state: ContinueState):
     print("State:", state)
@@ -120,19 +125,19 @@ def continue_conversation(state: ContinueState):
         These two characters have just had this conversation. They have finished.
 
         Character 1:
-        {state["character_1"].dict()}
+        {state["character_1"]}
 
         Character 2:
-        {state["character_2"].dict()}
+        {state["character_2"]}
 
         Conversation:
-        {state["conversation"]}
+        {state["previous_conversation"]}
 
         This is their relationship with each other:
         {state["relationship"]}
 
         This is the tone of their previous conversation:
-        {state["tone"]}
+        {state["previous_tone"]}
 
         They are sitting next to each other at the same table in a coffee shop.
 
@@ -143,16 +148,15 @@ def continue_conversation(state: ContinueState):
 
         The entire scene takes place within the coffee shop setting, without either character relying on external props or actions beyond talking to each other.
         Make it lengthy - at least 30 turns per character.
+
+        The characters MUST speak in Tagalog/Taglish.
         """
     )
 
     response = structured_conversation_llm.invoke(prompt)
     print("new_conversation response:", response)
 
-    return {
-        "new_tone": state["new_tone"], 
-        "new_conversation": response
-        }
+    return {"new_conversation": response}
 
 begin_conversation_workflow = StateGraph(BeginState)
 
@@ -193,7 +197,6 @@ class ContinueCoupleConversation(BaseModel):
     character_2: CharacterProfile
     relationship: str
     tone: str
-    conversation: list[ConversationMessage]
 
 @app.websocket("/ws/cafe-couple-director")
 async def cafe_couple_director(websocket: WebSocket):
@@ -201,7 +204,7 @@ async def cafe_couple_director(websocket: WebSocket):
 
     character_1: CharacterProfile
     character_2: CharacterProfile
-    conversation: list[ConversationMessage]
+    conversation: list[ConversationMessage] = []
     relationship: str
     tone: str
     
@@ -232,13 +235,15 @@ async def cafe_couple_director(websocket: WebSocket):
                     })
                 )
 
-                conversation = response["conversation"]
+                conversation = response["conversation"].messages
 
-                print(f"Make conversation agent response:", response)
+                print(f"Begin conversation agent response:", response)
+
+                conversation_dicts = [msg.model_dump() for msg in conversation]
 
                 await websocket.send_json({
                     "type": "conversation",
-                    "conversation": conversation
+                    "conversation": conversation_dicts
                 })
                 continue
                 
@@ -264,13 +269,15 @@ async def cafe_couple_director(websocket: WebSocket):
                 )
 
                 tone = response["new_tone"]
-                conversation = response["new_conversation"]
+                conversation = response["new_conversation"].messages
 
                 print(f"Continue conversation agent response:", response)
 
+                conversation_dicts = [msg.model_dump() for msg in conversation]
+
                 await websocket.send_json({
                     "type": "conversation",
-                    "conversation": conversation
+                    "conversation": conversation_dicts
                 })
                 continue
 

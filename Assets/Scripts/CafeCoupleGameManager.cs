@@ -1,8 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Newtonsoft.Json;
-using System.Linq;
-using UnityEngine.Random;
+using System.Collections;
 
 public class CafeCoupleGameManager : MonoBehaviour
 {
@@ -17,7 +16,7 @@ public class CafeCoupleGameManager : MonoBehaviour
     public float minConversationWaitingTime = 10f;
     public float maxConversationWaitingTime = 30f;
 
-    Dictionary<string, CafeCoupleNpcController> characters = new Dictionary<string, NpcController>();
+    Dictionary<string, CafeCoupleNpcController> characters = new Dictionary<string, CafeCoupleNpcController>();
 
     void Start()
     {
@@ -62,7 +61,7 @@ public class CafeCoupleGameManager : MonoBehaviour
 
         Debug.Log("Conversation complete");
 
-        conversationWaitingTime = Random.Range(minConversationWaitingTime, maxConversationWaitingTime);
+        float conversationWaitingTime = Random.Range(minConversationWaitingTime, maxConversationWaitingTime);
         yield return new WaitForSeconds(conversationWaitingTime);
         
         SendContinueConversation();

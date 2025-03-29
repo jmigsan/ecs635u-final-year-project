@@ -8,7 +8,7 @@ using NativeWebSocket;
 
 public class CafeCoupleNetworkManager : MonoBehaviour
 {
-    public cafeCoupleGameManager cafeCoupleGameManager;
+    public CafeCoupleGameManager cafeCoupleGameManager;
 
     WebSocket websocket;
 
@@ -60,7 +60,8 @@ public class CafeCoupleNetworkManager : MonoBehaviour
         switch (type)
         {
             case "conversation":
-                List<ConversationMessage> conversation = (List<ConversationMessage>)jsonObj["conversation"];
+                JArray conversationArray = (JArray)jsonObj["conversation"];
+                List<ConversationMessage> conversation = conversationArray.ToObject<List<ConversationMessage>>();
                 cafeCoupleGameManager.LoadConversation(conversation);
                 break;
 
@@ -165,7 +166,7 @@ public class CafeCoupleNetworkManager : MonoBehaviour
                 backstory = char2.backstory,
                 how_they_feel_about_current_life = char2.howTheyFeelAboutCurrentLife
             },
-            relationship = relationship
+            relationship = relationship,
             tone = tone
         };
 

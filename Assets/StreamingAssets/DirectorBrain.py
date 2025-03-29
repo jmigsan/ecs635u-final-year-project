@@ -398,16 +398,6 @@ characters = [
         "personality": "Calm and perceptive barista who seems to know exactly what everyone needs. She has an encyclopedic knowledge of coffee and tea. She offers subtle life wisdom while making drinks and notices all the relationships developing among the regulars."
     },
     {
-        "name": "Ren",
-        "role": "Morning Regular with Day Job",
-        "personality": "Overworked but optimistic office worker who comes to the café to escape. He has a dry sense of humor and is secretly writing a novel about office life. He provides perspective on adult responsibilities while maintaining a childlike wonder."
-    },
-    {
-        "name": "Julia",
-        "role": "Creative Regular",
-        "personality": "Eccentric and passionate illustrator who treats the café as her second studio. She has synesthesia and often describes sounds in terms of colors. She unintentionally gives advice through her unique perspective on life and art. Always has paint on her clothes."
-    },
-    {
         "name": "Player",
         "role": "User",
         "personality": "A default vibe of 'kind-hearted but slightly awkward.' Earnest, relatable, and a little unsure of themselves, especially in romance."
@@ -709,7 +699,7 @@ async def transcribe_audio(audio: UploadFile = File(...)) -> TranscribeResponse:
     }
 
     data = {
-        "language": "tagalog",
+        # "language": "tagalog",
         "response_format": "json"
     }
     

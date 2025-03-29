@@ -26,6 +26,8 @@ public class CafeCoupleNpcController : MonoBehaviour
 
     bool isTalking = false;
 
+    CafeCoupleNpcController currentTalkTarget;
+
     void Start()
     {
         audioSource = GetComponent<AudioSource>();
@@ -38,7 +40,7 @@ public class CafeCoupleNpcController : MonoBehaviour
     {
         if (currentTalkTarget != null)
         {
-            RotateTowards(currentTalkTarget);
+            RotateTowards(currentTalkTarget.GetTransform());
         }
     }
 
@@ -74,7 +76,7 @@ public class CafeCoupleNpcController : MonoBehaviour
 
     IEnumerator TalkWithTTS(CafeCoupleNpcController target, string message)
     {
-        currentTalkTarget = target.GetTransform();
+        currentTalkTarget = target;
         subs.text = message;
         isTalking = true;
 
