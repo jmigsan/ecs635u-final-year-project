@@ -91,7 +91,7 @@ structured_writer_llm = llm.with_structured_output(FiveActScene)
 def writer_makes_story(state: State):
     story = structured_writer_llm.invoke(textwrap.dedent(
         f"""
-        Write an outline for a scene in a romantic slice-of-life anime, designed for a video game. In this game, one character is the user, referred to as the "Player". However, the story should unfold independently of the Player, who will only serve as a passive observer.
+        Write an outline for a scene in a romantic slice-of-life anime, designed for a video game. In this game, one character is the user, referred to as the "Player".
 
         Below are the characters available:
         {state["characters"]}
@@ -101,8 +101,9 @@ def writer_makes_story(state: State):
 
         Guidelines:
         - The narrative should highlight a gentle, romantic atmosphere typical of slice-of-life anime.
-        - The Player does not influence the story; they simply observe the events.
-        - The Player is still part of the story. The Player is seen by other characters and has relationships with them. 
+        - Create a story that doesn't heavily involve the Player, but just takes them along for the ride.
+        - Expect the Player to not know anything about the situation.
+        - Expect the Player to not talk or respond much, if at all. And the characters can adapt to either response.
         - In the video game context, characters are restricted to only "talk" and "walk" actions.
         - Do not include any actions that require additional interactions (e.g., "spill coffee", "jump", or "wave").
 
@@ -171,6 +172,7 @@ def director_2(state: State):
         - If a character has been conversing with the Player repeatedly without a response, involve a different character to maintain momentum.
         - If a character has been conversing with another character about something and it looks like the conversation is going in circles, advance the story by bringing up another topic or another character.
         - If a conversation has been interrupted by the Player and it seems like the Player's conversation is done, go back to the previously ongoing conversation.
+        - Expect the Player to not talk or respond much, if at all. And the characters can adapt to either response.
 
         Output:
         Who should act next?
@@ -746,8 +748,8 @@ async def npc_speak(ttsQuery: TtsQuery):
 
     return StreamingResponse(audio_stream, media_type="audio/mpeg")
 
+# endregion
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("DirectorBrain:app", host="127.0.0.1", port=8000, reload=True)
-
-# endregion
