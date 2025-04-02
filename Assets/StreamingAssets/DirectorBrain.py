@@ -28,6 +28,7 @@ class DirectedAction(BaseModel):
 
 class WhoNext(BaseModel):
     character: Literal["Harry", "Emily", "Violet", "Akira", "Ren", "Julia"]
+    intent: str
 
 # ------ Director/Writer BaseModel
 class PreviousAction(BaseModel):
@@ -52,6 +53,15 @@ class FiveActScene(BaseModel):
     climax: SceneAct = Field(description="The turning point or moment of highest tension in the scene")
     falling_action: SceneAct = Field(description="Shows immediate consequences of the climax")
     resolution: SceneAct = Field(description="Concludes the scene while connecting to the larger story")
+
+class MainSceneAction(BaseModel):
+    character: Literal["Harry", "Emily", "Violet", "Akira", "Ren", "Julia"]
+    action: str
+
+class MainScene(BaseModel):
+    title: str = Field(description="A descriptive title for the scene")
+    setting: str = Field(description="The setting of the scene")
+    actions: list[MainSceneAction]
     
 class Character(BaseModel):
     name: str
@@ -86,31 +96,60 @@ class State(TypedDict):
 # ----- Graph Nodes
 
 # test to see if it's better without the strcutre
-structured_writer_llm = llm.with_structured_output(FiveActScene)
+structured_writer_llm = llm.with_structured_output(MainScene)
 
 def writer_makes_story(state: State):
-    story = structured_writer_llm.invoke(textwrap.dedent(
+    # prompt = textwrap.dedent(
+    #     f"""
+    #     Write an outline for a scene in a romantic slice-of-life anime, designed for a video game. In this game, one character is the user, referred to as the "Player".
+
+    #     Below are the characters available:
+    #     {state["characters"]}
+
+    #     The scene is set in:
+    #     {state["setting"]}
+
+    #     Guidelines:
+    #     - The narrative should highlight a gentle, romantic atmosphere typical of slice-of-life anime.
+    #     - In the video game context, characters are restricted to only "talk" and "walk" actions.
+    #     - Do not include any actions that require additional interactions (e.g., "spill coffee", "jump", or "wave").
+
+    #     Create an engaging and thoughtful outline that respects the setting and constraints.
+    #     """
+    # )
+
+    prompt = textwrap.dedent(
         f"""
-        Write an outline for a scene in a romantic slice-of-life anime, designed for a video game. In this game, one character is the user, referred to as the "Player".
+            write a scene outline with 4 characters
+            make this scene outline for video game
+            in the style of a slice of life anime
 
-        Below are the characters available:
-        {state["characters"]}
+            1 user character
+            - player
+            3 non-player characters
+            - player best friend
+            - player's potential love interest
+            - player's potential love interest's best friend
+            
+            here are the characters:
+            {state["characters"]}
 
-        The scene is set in:
-        {state["setting"]}
+            here is the setting:
+            {state["setting"]}
 
-        Guidelines:
-        - The narrative should highlight a gentle, romantic atmosphere typical of slice-of-life anime.
-        - Create a story that doesn't heavily involve the Player, but just takes them along for the ride.
-        - Expect the Player to not know anything about the situation.
-        - Expect the Player to not talk or respond much, if at all. And the characters can adapt to either response.
-        - In the video game context, characters are restricted to only "talk" and "walk" actions.
-        - Do not include any actions that require additional interactions (e.g., "spill coffee", "jump", or "wave").
+            the 3 non-player characters are talking about something that has unfolded outside the coffee shop that excites them all. this is because they are all involved in it. examples of topics could be: mystery, romance, affair, etc.
+            include the relationship between the characters in the dialogue they make. for example, have the player's best friend take jabs at player and the player's love interest
 
-        Create an engaging and thoughtful outline that respects the setting and constraints.
+            however, this scene is for a video game. in this game, the player's response is unpredictable. they could be hesitant to respond, not responsive, or say something irrelevant.
+            write it out so that whenever player is spoken to, the player's input could be anything and the story would still continue as normal.
+
+            begin with the 3 non-player characters already seated at a table. the player has just entered the coffee shop. the player is already inside.
+
+            make the scene outline very long.
         """
-    ))
+    )
 
+    story = structured_writer_llm.invoke(prompt)
 
     return {"story": story}
 
@@ -166,19 +205,21 @@ def director_2(state: State):
         2. Determine the current narrative state based on the provided context.
 
         3. Decide which character should act next. Remember:
-        - If one character has just walked up to another, the next action must involve dialogue.
-        - If a character asks another a question, the responding character must answer immediately.
         - If the Player interacts but then remains silent, shift the narrative focus to conversations among other characters.
         - If a character has been conversing with the Player repeatedly without a response, involve a different character to maintain momentum.
         - If a character has been conversing with another character about something and it looks like the conversation is going in circles, advance the story by bringing up another topic or another character.
         - If a conversation has been interrupted by the Player and it seems like the Player's conversation is done, go back to the previously ongoing conversation.
-        - Expect the Player to not talk or respond much, if at all. And the characters can adapt to either response.
+
+        4. Determine the intent of their next action. This is what they want to do next.
 
         Output:
         Who should act next?
+        What should the intent of their next action be?
         """
     ))
 
+        # - If one character has just walked up to another, the next action must involve dialogue.
+        # - If a character asks another a question, the responding character must answer immediately.
 
     print(response)
 
@@ -206,35 +247,33 @@ def director_3(state: State):
     prompt = textwrap.dedent(
         f"""--- Director Instructions—Rules & Fallback Procedures ---
 
-        1. PERMITTED ACTIONS ONLY:
-        - A character may only perform an action explicitly listed in actions_this_character_can_do.
-        - Characters can only "talk" to another character if "talk" appears as an allowed action on that target.
-
-        2. FALLBACK BEHAVIOR:
-        - If an intended action is not permitted:
-            - Example: If the narrative requires a "talk" action but "talk" is not in the allowed actions, then first instruct the character to perform a valid precursor action (e.g., "walk") toward the intended target.
-            - Once the precursor action establishes the proper narrative context (e.g., approaching the other character), call for the conversational action if it becomes available on a subsequent turn.
-
-        3. SITUATION-SPECIFIC GUIDELINES:
-        - If someone has just walked up to someone, the next action must be dialogue—someone must say something.
-        - If one character asks another something, the other character must respond in their next turn.
-        - If the Player (a user-controlled character) is silent after speaking or no clear narrative action is occurring, direct the story to involve conversation among other characters to keep momentum.
-        - Additionally, if a character has been talking to the Player more than once without a response from the Player in between, use another character to advance the narrative.
-        - If a character has been conversing with another character about something and it looks like the conversation is going in circles, advance the story by bringing up another topic or another character.
-
-
-        4. OVERVIEW OF CONTEXT:
+        1. OVERVIEW OF CONTEXT:
         - Story: {state["story"]}
         - Characters Available: {state["characters"]}
         - Previous Actions: {state["previous_actions"]}
         - CURRENT ACTOR: {state['who_should_act_next'].character}
             Sees: {things_this_character_sees}
         - ALLOWED ACTIONS: {actions_this_character_can_do}
+        - CURRENT ACTOR'S INTENT: {state['who_should_act_next'].intent}
+
+        2. PERMITTED ACTIONS ONLY:
+        - A character may only perform an action explicitly listed in actions_this_character_can_do.
+        - Characters can only "talk" to another character if "talk" appears as an allowed action on that target.
+
+        3. FALLBACK BEHAVIOR:
+        - If an intended action is not permitted:
+            - Example: If the narrative requires a "talk" action but "talk" is not in the allowed actions, then first instruct the character to perform a valid precursor action (e.g., "walk") toward the intended target.
+            - Once the precursor action establishes the proper narrative context (e.g., approaching the other character), call for the conversational action if it becomes available on a subsequent turn.
+
+        4. SITUATION-SPECIFIC GUIDELINES:
+        - Analyse the previous actions. Determine if the story is going in circles or is getting stale. If so, Force a new topic or action that moves the story forward significantly.
+        - If the Player (a user-controlled character) is silent after speaking or no clear narrative action is occurring, direct the story to involve conversation among other characters to keep momentum.
+        - Additionally, if a character has been talking to the Player more than once without a response from the Player in between, use another character to advance the narrative.
 
         5. DIRECTOR TASK:
         - You are directing non-player characters (NPCs) to follow the story's progression within the above constraints.
         - Remember: the "Player" is controlled by a user and should NOT be directed.
-        - Determine what {state['who_should_act_next'].character} should do next based on the story context, current observations, and their allowed actions.
+        - Determine what {state['who_should_act_next'].character} should do next based on the story context, current observations, their allowed actions, and their intent.
         - CRITICAL CHECK: Before instructing an action, verify that it is listed as an allowed "PossibleAction". If the natural story progression requires an action that is not allowed (e.g., "talk"), then first direct a permitted action (like "walk") that will logically set up the intended narrative and enable the eventual transition into the desired action.
 
         YOUR TASK:
@@ -422,7 +461,6 @@ async def narrative_engine_endpoint(websocket: WebSocket):
             message="The story has started."
         )
     ]
-    potential_directions: list[DirectedAction] = []
 
     try:
         while True:
@@ -460,17 +498,6 @@ async def narrative_engine_endpoint(websocket: WebSocket):
 
                 print("(Begin story) Director response:", response_data, "\n")
 
-                if response["direction"].action == "talk":
-                    potential_directions.append(await queue_potential_direction(
-                        story,
-                        previous_actions,
-                        begin_story.character_perceptions,
-                        response_data["character"],
-                        response_data["action"],
-                        response_data["target"],
-                        response_data["message"]
-                    ))
-
                 await websocket.send_json(response_data)
                 continue
 
@@ -490,18 +517,7 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                 previous_actions.append(action)
                 print("(Completed direction) Previous actions:", previous_actions, "\n")
 
-                if potential_directions:
-                    preloaded_direction = potential_directions.pop(0)
-                    response_data = {
-                        "type": "director_response",
-                        "character": preloaded_direction.character,
-                        "action": preloaded_direction.action,
-                        "target": preloaded_direction.target
-                    }
-                    if hasattr(preloaded_direction, "message") and preloaded_direction.message is not None:
-                        response_data["message"] = preloaded_direction.message
-
-                elif completed_direction.action == "talk" and completed_direction.target == "Player":
+                if completed_direction.action == "talk" and completed_direction.target == "Player":
                     response_data = {
                         "type": "director_response",
                         "character": completed_direction.character,
@@ -536,17 +552,6 @@ async def narrative_engine_endpoint(websocket: WebSocket):
                         response_data["message"] = response["direction"].message
 
                 print("(Completed direction) Director response:", response_data, "\n")
-
-                if response_data["action"] == "talk":
-                    potential_directions.append(await queue_potential_direction(
-                        story,
-                        previous_actions,
-                        completed_direction.character_perceptions,
-                        response_data["character"],
-                        response_data["action"],
-                        response_data["target"],
-                        response_data["message"]
-                    ))
 
                 await websocket.send_json(response_data)
                 continue
@@ -604,17 +609,6 @@ async def narrative_engine_endpoint(websocket: WebSocket):
 
                 print("(Player interruption) Director response:", response_data, "\n")
 
-                if response["direction"].action == "talk":
-                    potential_directions.append(await queue_potential_direction(
-                        story,
-                        previous_actions,
-                        player_interruption.character_perceptions,
-                        response_data["character"],
-                        response_data["action"],
-                        response_data["target"],
-                        response_data["message"]
-                    ))
-
                 await websocket.send_json(response_data)
                 continue
             
@@ -631,58 +625,6 @@ async def narrative_engine_endpoint(websocket: WebSocket):
     
     except WebSocketDisconnect:
         print("Client disconnected")
-
-async def queue_potential_direction(story: Optional[FiveActScene], previous_actions: list[PreviousAction], character_perceptions: list[CharacterPerception], character: str, action: str, target: str, message: Optional[str] = None):
-    temp_previous_actions = previous_actions.copy()
-
-    optimistic_previous_action = PreviousAction(
-        time=temp_previous_actions[-1].time + 1, 
-        character=character, 
-        action=action,
-        target=target,
-        message=message)
-    
-    temp_previous_actions.append(optimistic_previous_action)
-    print("(Potential direction) Previous actions:", temp_previous_actions, "\n")
-
-    optimistic_direction: DirectedAction
-
-    if action == "talk" and target == "Player":
-        optimistic_direction = DirectedAction(
-            character=character,
-            action="wait_for_player",
-            target="Player",
-            message=None
-        )
-    else:
-        continue_story_agent = continue_story_workflow.compile()
-
-        response = await asyncio.to_thread(
-            partial(continue_story_agent.invoke, {
-                "story": story,
-                "who_should_act_next": None,
-                "direction": None,
-                "characters": characters,
-                "previous_actions": temp_previous_actions,
-                "setting": setting,
-                "character_perceptions": character_perceptions
-            })
-        )
-
-        directed_message = None
-        if hasattr(response["direction"], "message") and response["direction"].message is not None:
-            directed_message = response["direction"].message
-        
-        optimistic_direction =  DirectedAction(
-            character=response["direction"].character,
-            action=response["direction"].action,
-            target=response["direction"].target,
-            message=directed_message
-        )
-
-    print("(Potential direction) Director response:", optimistic_direction, "\n")
-
-    return optimistic_direction
 
 # endregion
 
