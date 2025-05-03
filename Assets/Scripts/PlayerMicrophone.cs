@@ -214,13 +214,21 @@ public class PlayerMicrophone : MonoBehaviour
     // tell that person what you said
     void TellNpcWhatISaid(string words)
     {
-        NpcController npc = NpcImTalkingTo.collider.GetComponent<NpcController>();
-        string targetName = npc.entityName;
-
         string wordsFormatted = "You: " + words;
         StartCoroutine(DisplayUserSubtitles(wordsFormatted));
 
-        SendCompletedAction("player_interruption", "talk", targetName, words);
+        NpcController npc = NpcImTalkingTo.collider.GetComponent<NpcController>();
+        if (npc != null)
+        {
+            string targetName = npc.entityName;
+            SendCompletedAction("player_interruption", "talk", targetName, words);
+        }
+
+        IndividualReservedNpcController individualReservedNpc = NpcImTalkingTo.collider.GetComponent<IndividualReservedNpcController>();
+        if (individualReservedNpc != null)
+        {
+            individualReservedNpc.Listen(words);
+        }
     }
 
     IEnumerator DisplayUserSubtitles(string words)

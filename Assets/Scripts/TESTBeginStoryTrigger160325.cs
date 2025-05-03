@@ -6,11 +6,13 @@ public class TESTBeginStoryTrigger160325 : MonoBehaviour
     [Header("Game Managers")]
     public CafeCoupleGameManager cafeCoupleGameManager1;
     public CafeCoupleGameManager cafeCoupleGameManager2;
+    public IndividualReservedGameManager individualReservedGameManager;
     
     [Header("Manager Activation Settings")]
     public bool activateNetworkManager = false;  // Inspector toggle for network manager
     public bool activateManager1 = false;  // Inspector toggle for manager 1
     public bool activateManager2 = false;  // Inspector toggle for manager 2
+    public bool activateManager3 = false;  // Inspector toggle for manager 2
     
     private bool hasTriggered = false; // Flag to prevent multiple triggers
     private Keyboard keyboard;
@@ -65,6 +67,12 @@ public class TESTBeginStoryTrigger160325 : MonoBehaviour
         {
             cafeCoupleGameManager2.SendBeginConversation();
             Debug.Log("Activated CafeCoupleGameManager2");
+        }
+
+        if (activateManager3 && individualReservedGameManager != null)
+        {
+            individualReservedGameManager.SendInitialiseCharacterMessage();
+            Debug.Log("Activated IndividualReservedGameManager");
         }
         
         hasTriggered = true;

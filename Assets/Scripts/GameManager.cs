@@ -20,7 +20,7 @@ public class GameManager : MonoBehaviour
     public NpcController harry;
     public NpcController emily;
     public NpcController violet;
-    public NpcController akira;
+    // public NpcController akira;
     public GameObject player;
 
     public float characterPerceptibleRadius = 10f;
@@ -77,7 +77,7 @@ public class GameManager : MonoBehaviour
         characters["Harry"] = harry;
         characters["Emily"] = emily;
         characters["Violet"] = violet;
-        characters["Akira"] = akira;
+        // characters["Akira"] = akira;
     }
 
     void HandleCharacterAction(string characterInput, string actionInput, string targetInput)

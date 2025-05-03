@@ -433,11 +433,11 @@ characters = [
         "role": "Female Friend / Group Mediator",
         "personality": "Warm and diplomatic literature enthusiast who loves analyzing people like they're characters in a novel. Enjoys teasing Harry and has playful arguments with him that mask their growing attraction. Often gives surprisingly insightful advice."
     },
-    {
-        "name": "Akira",
-        "role": "Café Barista",
-        "personality": "Calm and perceptive barista who seems to know exactly what everyone needs. She has an encyclopedic knowledge of coffee and tea. She offers subtle life wisdom while making drinks and notices all the relationships developing among the regulars."
-    },
+    # {
+    #     "name": "Akira",
+    #     "role": "Café Barista",
+    #     "personality": "Calm and perceptive barista who seems to know exactly what everyone needs. She has an encyclopedic knowledge of coffee and tea. She offers subtle life wisdom while making drinks and notices all the relationships developing among the regulars."
+    # },
     {
         "name": "Player",
         "role": "User",

@@ -936,6 +936,51 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 2062488646}
   m_SourcePrefab: {fileID: 100100000, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+--- !u!1 &120010317
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 120010319}
+  - component: {fileID: 120010318}
+  m_Layer: 0
+  m_Name: Network Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &120010318
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 120010317}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a8cf0ac8184a7b41a074903a25d943c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  individualReservedGameManager: {fileID: 1671978035}
+--- !u!4 &120010319
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 120010317}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 378194405}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &159066516
 GameObject:
   m_ObjectHideFlags: 0
@@ -1076,7 +1121,6 @@ Transform:
   - {fileID: 1158555279}
   - {fileID: 780169120}
   - {fileID: 929141614}
-  - {fileID: 1677920026}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &276526534
@@ -1318,6 +1362,39 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 312686636}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &378194404
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 378194405}
+  m_Layer: 0
+  m_Name: Individual Reserved
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &378194405
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 378194404}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 120010319}
+  - {fileID: 1671978036}
+  m_Father: {fileID: 652393741}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &388092622
 GameObject:
   m_ObjectHideFlags: 0
@@ -2337,6 +2414,7 @@ Transform:
   - {fileID: 1625520649}
   - {fileID: 556697575}
   - {fileID: 1659528528}
+  - {fileID: 378194405}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &672795803
@@ -3768,6 +3846,38 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 797626160}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &803213144
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 803213145}
+  m_Layer: 0
+  m_Name: Individual Reserved
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &803213145
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 803213144}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -0.55, y: 0.98, z: 8.37}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1677920026}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &804412396
 GameObject:
   m_ObjectHideFlags: 0
@@ -4948,9 +5058,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cafeCoupleGameManager1: {fileID: 502872653}
   cafeCoupleGameManager2: {fileID: 501843913}
-  activateNetworkManager: 1
+  individualReservedGameManager: {fileID: 1671978035}
+  activateNetworkManager: 0
   activateManager1: 0
   activateManager2: 0
+  activateManager3: 1
 --- !u!1 &1158555275
 GameObject:
   m_ObjectHideFlags: 0
@@ -6495,7 +6607,6 @@ MonoBehaviour:
   harry: {fileID: 1158555281}
   emily: {fileID: 780169119}
   violet: {fileID: 929141613}
-  akira: {fileID: 1677920025}
   player: {fileID: 2062488631}
   characterPerceptibleRadius: 30
   characterActionableRadius: 3
@@ -6532,6 +6643,52 @@ Transform:
   - {fileID: 501843912}
   m_Father: {fileID: 652393741}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1671978034
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1671978036}
+  - component: {fileID: 1671978035}
+  m_Layer: 0
+  m_Name: Game Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1671978035
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1671978034}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c22a43e42fbae04e9b49a28ccd48d8c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  individualReservedNetworkManager: {fileID: 120010318}
+  character: {fileID: 1677920029}
+--- !u!4 &1671978036
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1671978034}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 378194405}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1677920018
 GameObject:
   m_ObjectHideFlags: 0
@@ -6541,6 +6698,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1677920026}
+  - component: {fileID: 1677920029}
   - component: {fileID: 1677920025}
   - component: {fileID: 1677920028}
   - component: {fileID: 1677920024}
@@ -6792,7 +6950,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1677920018}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e6844742fe8464d43962e5b6ba3e893e, type: 3}
   m_Name: 
@@ -6816,13 +6974,13 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.9999575, z: -0, w: 0.009225305}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.9195485, y: 0.9195485, z: 0.9195485}
+  m_LocalScale: {x: 0.91954887, y: 0.9195485, z: 0.91954887}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 627759078}
   - {fileID: 73977594}
   - {fileID: 1750963590}
-  m_Father: {fileID: 204842866}
+  m_Father: {fileID: 803213145}
   m_LocalEulerAnglesHint: {x: 0, y: 178.943, z: 0}
 --- !u!114 &1677920028
 MonoBehaviour:
@@ -6842,6 +7000,38 @@ MonoBehaviour:
   precomputeOutline: 0
   bakeKeys: []
   bakeValues: []
+--- !u!114 &1677920029
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1677920018}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d728765615b00c4c8dd956ae4553f88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  npcName: Akira
+  age: 28
+  occupation: "Caf\xE9 Barista"
+  personality: Calm and perceptive with an encyclopedic knowledge of coffee and tea.
+    She notices details about people others miss and has an intuitive ability to
+    recommend exactly what someone needs in the moment.
+  currentLifeStage: Working professional who has found her calling in creating a
+    warm community space through her craft.
+  primaryGoal: To create a sanctuary where people can find comfort through perfectly
+    crafted beverages while subtly helping regulars navigate their life challenges.
+  backstory: "Akira discovered her passion for coffee while traveling abroad after
+    college. She apprenticed under master baristas in several countries before returning
+    home to apply her knowledge. She chose this specific caf\xE9 because she sensed
+    it could become a nexus for meaningful community connections."
+  howTheyFeelAboutCurrentLife: "Content with her role as both beverage artisan and
+    unofficial confidante to her customers. She finds fulfillment in the small ways
+    she positively impacts people's lives, though occasionally wonders about pursuing
+    her own caf\xE9 someday."
+  voice: en-SG-LunaNeural
+  individualReservedGameManager: {fileID: 0}
 --- !u!1 &1701709893
 GameObject:
   m_ObjectHideFlags: 0
@@ -8275,6 +8465,7 @@ SceneRoots:
   - {fileID: 652393741}
   - {fileID: 1908580832}
   - {fileID: 204842866}
+  - {fileID: 803213145}
   - {fileID: 947662715}
   - {fileID: 452713016}
   - {fileID: 1127657077}
