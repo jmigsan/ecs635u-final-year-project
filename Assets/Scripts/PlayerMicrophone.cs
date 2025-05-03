@@ -225,9 +225,8 @@ public class PlayerMicrophone : MonoBehaviour
             Debug.Log("Talking to directable npc");
             if (directableNpc.inDirectorScene)
             {
-                // This looks crazy. It directly calls the network manager from the NPC. Then adds the player's input to the conversation.
-                directableNpc.currentSceneDirector.sceneDirectorNetworkManager.SendPlayerInterruption(words, npc.npcName);
-
+                // It directly calls the network manager from the NPC. Then adds the player's input to the conversation.
+                directableNpc.currentSceneDirector.SendPlayerInterruption(words, directableNpc.npcName);
             }
             else
             {

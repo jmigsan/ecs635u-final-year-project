@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using System.Threading.Tasks;
 
 public class SceneDirector : MonoBehaviour
@@ -153,7 +154,7 @@ public class SceneDirector : MonoBehaviour
 
     public void LoadDirections(List<SceneDirectorNetworkManager.Direction> directions)
     {
-        Debug.Log("Received directions:", directions);
+        Debug.Log($"Received directions: {string.Join(", ", directions)}");
         StartCoroutine(ProcessDirections(directions));
     }
 
@@ -221,5 +222,10 @@ public class SceneDirector : MonoBehaviour
         npcs.Clear();
 
         directing = false;
+    }
+
+    public void SendPlayerInterruption(string action, string target)
+    {
+        sceneDirectorNetworkManager.SendPlayerInterruption(action, target);
     }
 }

@@ -155,7 +155,7 @@ public class SceneDirectorNetworkManager : MonoBehaviour
         public string curriculum { get; set; }
     }
 
-    public async void SendBeginSceneDirection(List<Character> characters, string location, string time, string purpose, List<PreviousNpcConversations> previously)
+    public async Task SendBeginSceneDirection(List<Character> characters, string location, string time, string purpose, List<PreviousNpcConversations> previously)
     {
         BeginSceneDirectionMessage message = new BeginSceneDirectionMessage();
         message.characters = characters;

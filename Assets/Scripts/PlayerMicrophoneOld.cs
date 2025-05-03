@@ -5,9 +5,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class PlayerMicrophone : MonoBehaviour
+public class PlayerMicrophoneOld : MonoBehaviour
 {
-    public static PlayerMicrophone Instance { get; private set; }
+    public static PlayerMicrophoneOld Instance { get; private set; }
 
     void Awake()
     {

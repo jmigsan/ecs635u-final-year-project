@@ -1,6 +1,6 @@
 using UnityEngine;
 using System;
-using System.Collections.Generic;
+using System.Collections;
 using UnityEngine.AI;
 using UnityEngine.Networking;
 using TMPro;
@@ -32,7 +32,7 @@ public class FollowerNpc : MonoBehaviour
     
     void Start()
     {
-        player = PlayerInfoManager.GetTransform();
+        player = PlayerInfoManager.Instance.GetTransform();
         followerNpcNetworkManager = GetComponent<FollowerNpcNetworkManager>();
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
@@ -74,7 +74,7 @@ public class FollowerNpc : MonoBehaviour
 
     void FollowPlayer()
     {
-        Transform playerTransform = PlayerInfoManager.GetTransform();
+        Transform playerTransform = PlayerInfoManager.Instance.GetTransform();
         float distanceToPlayer = Vector3.Distance(transform.position, playerTransform.position);
         
         if (distanceToPlayer > followDistance)
