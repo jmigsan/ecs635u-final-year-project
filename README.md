@@ -20,4 +20,4 @@ This requires a few things to start. You need Python installed. You need uv inst
 - "uvicorn>=0.34.0",
 - "websockets>=15.0.1",
 
-Then, before running the program, you need to run the commands `uv run DirectableNpc.py`, `uv run FollowerNpc.py`, and `uv run SceneDirector.py`.
+Then, before running the program, you need to run the commands `uv run DirectableNpc.py`, `uv run FollowerNpc.py`, and `uv run SceneDirector.py`. These scripts are in the StreamingAssets folder.
