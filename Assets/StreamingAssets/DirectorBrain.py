@@ -91,7 +91,7 @@ structured_writer_llm = llm.with_structured_output(FiveActScene)
 def writer_makes_story(state: State):
     story = structured_writer_llm.invoke(textwrap.dedent(
         f"""
-        Write an outline for a scene in a romantic slice-of-life anime, designed for a video game. In this game, one character is the user, referred to as the "Player".
+        Write an outline for a scene in a romantic slice-of-life anime, designed for a video game. It has a hint of mystery. In this game, one character is the user, referred to as the "Player".
 
         Below are the characters available:
         {state["characters"]}
@@ -237,14 +237,14 @@ def director_3(state: State):
         - Determine what {state['who_should_act_next'].character} should do next based on the story context, current observations, and their allowed actions.
         - CRITICAL CHECK: Before instructing an action, verify that it is listed as an allowed "PossibleAction". If the natural story progression requires an action that is not allowed (e.g., "talk"), then first direct a permitted action (like "walk") that will logically set up the intended narrative and enable the eventual transition into the desired action.
 
+        # 6. LANGUAGE REQUIREMENT:
+        # - When characters speak (using any dialogue action), they MUST do so in French.
+
         YOUR TASK:
         Direct {state['who_should_act_next'].character} on their next move. Ensure that if a conversation is required or expected by the narrative, proper steps (like moving closer or initiating a precursor action) are taken if "talk" is not currently permitted.
 
         --- End of Director Prompt ---"""
     )
-
-        # 4. LANGUAGE REQUIREMENT:
-        # - When characters speak (using any dialogue action), they MUST do so in Tagalog (or Taglish when appropriate).
 
         #5.directortask
         # Remember: All dialogue must be in Tagalog (or Taglish).
@@ -701,7 +701,7 @@ async def transcribe_audio(audio: UploadFile = File(...)) -> TranscribeResponse:
     }
 
     data = {
-        # "language": "tagalog",
+        # "language": "french",
         "response_format": "json"
     }
     

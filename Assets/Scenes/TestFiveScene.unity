@@ -1875,7 +1875,8 @@ MonoBehaviour:
   character1: {fileID: 1326362856}
   character2: {fileID: 672795808}
   npcRelationship: Childhood Friends
-  conversationTone: Friendly
+  conversationTone: They are talking about having a dinner together soon. They are
+    planning a family reunion.
   minConversationWaitingTime: 10
   maxConversationWaitingTime: 30
 --- !u!1 &502872651
@@ -2579,7 +2580,7 @@ MonoBehaviour:
     her work and her connection to the community. Worries occasionally about trade
     disruptions or bad weather affecting grain supplies, but mostly focuses on the
     positive.
-  voice: fil-PH-AngeloNeural
+  voice: fr-FR-HenriNeural
 --- !u!4 &672795809
 Transform:
   m_ObjectHideFlags: 0
@@ -2866,6 +2867,7 @@ GameObject:
   - component: {fileID: 710546660}
   - component: {fileID: 710546661}
   - component: {fileID: 710546662}
+  - component: {fileID: 710546663}
   m_Layer: 2
   m_Name: Extra Scripts
   m_TagString: Untagged
@@ -2954,9 +2956,22 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 710546656}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 433204d2da291c9408b07695e49ca9d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  userSubtitles: {fileID: 849607604}
+--- !u!114 &710546663
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 710546656}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b79479d4f784a0d48ba8764a56ede803, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   userSubtitles: {fileID: 849607604}
@@ -3401,7 +3416,7 @@ MonoBehaviour:
   _farActions:
   - walk
   waitForPlayerTimeout: 5
-  voice: en-AU-NatashaNeural
+  voice: fr-FR-DeniseNeural
 --- !u!4 &780169120
 Transform:
   m_ObjectHideFlags: 0
@@ -4494,7 +4509,7 @@ MonoBehaviour:
   _farActions:
   - walk
   waitForPlayerTimeout: 5
-  voice: en-CA-ClaraNeural
+  voice: fr-FR-DeniseNeural
 --- !u!4 &929141614
 Transform:
   m_ObjectHideFlags: 0
@@ -5109,7 +5124,7 @@ MonoBehaviour:
   _farActions:
   - walk
   waitForPlayerTimeout: 5
-  voice: en-AU-WilliamNeural
+  voice: fr-FR-HenriNeural
 --- !u!114 &1158555282
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5888,7 +5903,7 @@ MonoBehaviour:
   howTheyFeelAboutCurrentLife: Generally satisfied. Enjoys the bustle (from a distance)
     and the financial security. Finds people predictable but occasionally surprising.
     Values stability above all else.
-  voice: fil-PH-AngeloNeural
+  voice: fr-FR-HenriNeural
 --- !u!4 &1326362857
 Transform:
   m_ObjectHideFlags: 0
@@ -6802,7 +6817,7 @@ MonoBehaviour:
   _farActions:
   - walk
   waitForPlayerTimeout: 5
-  voice: en-SG-LunaNeural
+  voice: fr-FR-DeniseNeural
 --- !u!4 &1677920026
 Transform:
   m_ObjectHideFlags: 0
@@ -7599,7 +7614,7 @@ MonoBehaviour:
   howTheyFeelAboutCurrentLife: Excited about learning but often frustrated by the
     slow pace and repetitive tasks. Eager for more responsibility and challenges,
     feels underestimated.
-  voice: fil-PH-BlessicaNeural
+  voice: fr-FR-DeniseNeural
 --- !u!195 &1810881096
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -8126,7 +8141,7 @@ MonoBehaviour:
   howTheyFeelAboutCurrentLife: Thrilled by the access to knowledge, but sometimes
     feels overwhelmed by how much there is to learn. Eager to prove his worth and
     contribute something meaningful.
-  voice: fil-PH-BlessicaNeural
+  voice: fr-FR-DeniseNeural
 --- !u!195 &2052919979
 NavMeshAgent:
   m_ObjectHideFlags: 0

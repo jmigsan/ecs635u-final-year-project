@@ -214,13 +214,39 @@ public class PlayerMicrophone : MonoBehaviour
     // tell that person what you said
     void TellNpcWhatISaid(string words)
     {
-        NpcController npc = NpcImTalkingTo.collider.GetComponent<NpcController>();
-        string targetName = npc.entityName;
-
         string wordsFormatted = "You: " + words;
         StartCoroutine(DisplayUserSubtitles(wordsFormatted));
 
-        SendCompletedAction("player_interruption", "talk", targetName, words);
+        GameObject npcObject = NpcImTalkingTo.collider.gameObject;
+
+        DirectableNpc directableNpc = npcObject.GetComponent<DirectableNpc>();
+        if (directableNpc != null)
+        {
+            Debug.Log("Talking to directable npc");
+            if (directableNpc.inDirectorScene)
+            {
+                // It directly calls the network manager from the NPC. Then adds the player's input to the conversation.
+                directableNpc.currentSceneDirector.SendPlayerInterruption(words, directableNpc.npcName);
+            }
+            else
+            {
+                directableNpc.Listen(words);
+            }
+        }
+
+        ShopkeeperNpc shopkeeperNpc = npcObject.GetComponent<ShopkeeperNpc>();
+        if (shopkeeperNpc != null)
+        {
+            Debug.Log("Talking to shopkeeper npc");
+            shopkeeperNpc.Listen(words);
+        }
+
+        FollowerNpc followerNpc = npcObject.GetComponent<FollowerNpc>();
+        if (followerNpc != null)
+        {
+            Debug.Log("Talking to follower npc");
+            followerNpc.Listen(words);
+        }
     }
 
     IEnumerator DisplayUserSubtitles(string words)
@@ -228,12 +254,5 @@ public class PlayerMicrophone : MonoBehaviour
         userSubtitles.text = words;
         yield return new WaitForSeconds(5);
         userSubtitles.text = "";
-    }
-
-    void SendCompletedAction(string type, string action, string target, string message)
-    {
-        Debug.Log($"Sent a completed action of type: {type}, character: 'Player', action: {action}, target: {target}, message: {message}");
-
-        GameManager.Instance.SendCompletedAction(type, "Player", action, target, message);
     }
 }

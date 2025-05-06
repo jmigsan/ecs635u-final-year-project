@@ -76,6 +76,7 @@ def begin_conversation(state: BeginState):
         They are sitting next to each other at the same table in a coffee shop.
         The entire scene takes place within the coffee shop setting, without either character relying on external props or actions beyond talking to each other.
         Make it lengthy - at least 30 turns per character.
+        The characters MUST speak in French.
 
         """
         # The characters MUST speak in Tagalog/Taglish.
@@ -148,6 +149,7 @@ def continue_conversation(state: ContinueState):
 
         The entire scene takes place within the coffee shop setting, without either character relying on external props or actions beyond talking to each other.
         Make it lengthy - at least 30 turns per character.
+        The characters MUST speak in French.
 
         """
         # The characters MUST speak in Tagalog/Taglish.

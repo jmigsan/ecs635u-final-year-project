@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 50cff2be1c49d2849847717bf4d6b1d4
+timeCreated: 1479179443
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 76098
+  packageName: VR Real World Wristwatch
+  packageVersion: 1.0
+  assetPath: Assets/Wristwatch/Prefabs/Watch.prefab
+  uploadId: 146455
