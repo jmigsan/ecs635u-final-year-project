@@ -25247,8 +25247,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 914f35a42680bba40a808b8c71d820dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  perceptibleSphereColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  actionableSphereColor: {r: 1, g: 0, b: 0, a: 1}
+  perceptibleSphereColor:
+    r: 1
+    g: 0.92156863
+    b: 0.015686275
+    a: 1
+  actionableSphereColor:
+    r: 1
+    g: 0
+    b: 0
+    a: 1
   drawAlways: 0
   lineWidth: 1
 --- !u!114 &1316880397
@@ -25282,6 +25290,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f3b573823f1fdb46b94d11e05f2840b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  layerMask:
+    m_Bits: 0
 --- !u!114 &1316880399
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25294,6 +25304,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 062977b44b80f554baa9d54f6b8f6a90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  selectedMicrophone: 
+  isRecording: 0
+  recordedClip: {fileID: 0}
+  recordingStartTime: 0
+  raycastLayerMask:
+    m_Bits: 0
 --- !u!114 &1316880400
 MonoBehaviour:
   m_ObjectHideFlags: 0
