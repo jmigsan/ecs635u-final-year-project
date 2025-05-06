@@ -14,6 +14,7 @@ using Newtonsoft.Json.Linq;
 
 public class DirectableNpc : MonoBehaviour
 {
+    [System.Serializable]
     public class RoutineActivity
     {
         [Tooltip("Activity name and description are fed into LLM to tell it what to generate.")]
@@ -46,7 +47,7 @@ public class DirectableNpc : MonoBehaviour
 
     RoutineActivity currentActivity = null;
     NavMeshAgent agent;
-    Animator animator;
+    // Animator animator;
     AudioSource audioSource;
     TextMeshPro subs;
     bool isTalking = false;
@@ -55,16 +56,20 @@ public class DirectableNpc : MonoBehaviour
     DirectableNpcNetworkManager directableNpcNetworkManager;
     int lastTriggeredHour = -1;
     int lastTriggeredMinute = -1;
+    List<RoutineActivity> completedActivities = new List<RoutineActivity>();
     
     void Start()
     {
         directableNpcNetworkManager = GetComponent<DirectableNpcNetworkManager>();
         agent = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>();
+        // animator = GetComponent<Animator>();
         audioSource = GetComponent<AudioSource>();
         subs = transform.Find("Subs/Text").GetComponent<TextMeshPro>();
         subs.text = "";
         PlayerMicrophone.Instance.PlayerIsTalking += HandlePlayerIsTalking;
+        SortRoutine();
+
+        Invoke("SendInitialiseDirectable", 5f);
     }
 
     void OnDestroy()
@@ -98,6 +103,23 @@ public class DirectableNpc : MonoBehaviour
         RotateToTalkTarget();
     }
 
+    void SortRoutine()
+    {
+        routine.Sort((activityA, activityB) =>
+        {
+            int hourComparison = activityA.startHour.CompareTo(activityB.startHour);
+
+            if (hourComparison != 0)
+            {
+                return hourComparison;
+            }
+
+            return activityA.startMinute.CompareTo(activityB.startMinute);
+        });
+
+        Debug.Log($"{npcName}'s routine has been sorted chronologically.");
+    }
+
     void CheckRoutine()
     {
         int gameHour = GameClock.Instance.hour;
@@ -113,17 +135,21 @@ public class DirectableNpc : MonoBehaviour
 
         for (int i = 0; i < routine.Count; i++)
         {
-            // Doesn't work if the npc misses the time. Don't miss the time.
-            if (gameHour == routine[i].startHour && gameMinute == routine[i].startMinute)
+            // Should be sorted, so the first one should be ok?
+            if (gameHour >= routine[i].startHour && gameMinute >= routine[i].startMinute)
             {
-                if (currentActivity != null && !string.IsNullOrEmpty(currentActivity.animation))
-                {
-                    animator.SetBool(currentActivity.animation, false);
-                }
+                // if (currentActivity != null && !string.IsNullOrEmpty(currentActivity.animation))
+                // {
+                //     animator.SetBool(currentActivity.animation, false);
+                // }
 
-                isAtDestination = false;
-                currentActivity = routine[i];
-                break;
+                if (routine[i] != currentActivity && !completedActivities.Contains(routine[i]))
+                {
+                    isAtDestination = false;
+                    currentActivity = routine[i];
+                    completedActivities.Add(routine[i]);
+                    break;
+                }
             }
         }
 
@@ -132,18 +158,18 @@ public class DirectableNpc : MonoBehaviour
         if (currentActivity != null && !inDirectorScene && !isAtDestination)
         {
             agent.SetDestination(currentActivity.location.position);
-            animator.SetBool("Walk", true);
+            // animator.SetBool("Walk", true);
             
             // Check if we've reached the destination
             if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
             {
                 isAtDestination = true;
-                animator.SetBool("Walk", false);
+                // animator.SetBool("Walk", false);
                                 
-                if (!string.IsNullOrEmpty(currentActivity.animation))
-                {
-                    animator.SetBool(currentActivity.animation, true);
-                }
+                // if (!string.IsNullOrEmpty(currentActivity.animation))
+                // {
+                //     animator.SetBool(currentActivity.animation, true);
+                // }
             }
         }
     }
@@ -193,6 +219,7 @@ public class DirectableNpc : MonoBehaviour
 
     IEnumerator TalkWithTTS(Transform target, string message)
     {
+        Debug.Log($"DN talk tts here, {target}, {message}");
         currentTalkTarget = target;
         subs.text = message;
         isTalking = true;
@@ -215,7 +242,7 @@ public class DirectableNpc : MonoBehaviour
         TtsQuery query = new TtsQuery { words = message, voice = voice };
         string jsonQuery = JsonUtility.ToJson(query);
 
-        using (UnityWebRequest www = new UnityWebRequest("http://127.0.0.1:8002/tts", "POST"))
+        using (UnityWebRequest www = new UnityWebRequest("http://127.0.0.1:8000/tts", "POST"))
         {
             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonQuery);
             www.uploadHandler = new UploadHandlerRaw(bodyRaw);
@@ -255,6 +282,11 @@ public class DirectableNpc : MonoBehaviour
             {
                 audioSource.Stop();
             }
+
+            if (playerIsTalking)
+            {
+                yield return null;
+            }
         }
     }
 
@@ -268,6 +300,21 @@ public class DirectableNpc : MonoBehaviour
         TaskCompletionSource<SceneDirectorNetworkManager.PreviousNpcConversations> tcs = new TaskCompletionSource<SceneDirectorNetworkManager.PreviousNpcConversations>();
         directableNpcNetworkManager.SendGetAllConversationHistory(tcs);
         return await tcs.Task;
+    }
+
+    void SendInitialiseDirectable()
+    {
+        DirectableNpcNetworkManager.Character character = new DirectableNpcNetworkManager.Character
+        {
+            name = npcName,
+            age = age,
+            gender = gender,
+            occupation = occupation,
+            personality = personality,
+            backstory = backstory
+        };
+
+        directableNpcNetworkManager.SendInitialiseDirectable(character, "Sorano Town", "You are a native to Sorano.");
     }
 
 }

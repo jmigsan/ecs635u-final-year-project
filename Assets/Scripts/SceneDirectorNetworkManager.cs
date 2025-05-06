@@ -151,11 +151,11 @@ public class SceneDirectorNetworkManager : MonoBehaviour
         public string time { get; set; }
         public string purpose { get; set; }
         public string player { get; set; }
-        public List<PreviousNpcConversations> previously { get; set; }
+        public string previously { get; set; }
         public string curriculum { get; set; }
     }
 
-    public async Task SendBeginSceneDirection(List<Character> characters, string location, string time, string purpose, List<PreviousNpcConversations> previously)
+    public async Task SendBeginSceneDirection(List<Character> characters, string location, string time, string purpose, List<PreviousNpcConversations> previouslyData)
     {
         BeginSceneDirectionMessage message = new BeginSceneDirectionMessage();
         message.characters = characters;
@@ -163,7 +163,10 @@ public class SceneDirectorNetworkManager : MonoBehaviour
         message.time = time;
         message.purpose = purpose;
         message.player = PlayerInfoManager.Instance.PlayerName;
-        message.previously = previously;
+
+        string previouslyJsonString = JsonConvert.SerializeObject(previouslyData);
+        message.previously = previouslyJsonString;
+
         message.curriculum = PlayerInfoManager.Instance.GetCurriculum();
 
         string json = JsonConvert.SerializeObject(message);
@@ -203,6 +206,8 @@ public class SceneDirectorNetworkManager : MonoBehaviour
     // Player input will directly call this function. This will stop the current conversation, add the player input to the conversation history, and the LLM will make a new conversation based on player input. 
     public async void SendPlayerInterruption(string action, string target)
     {
+        Debug.LogAssertion("player_interruption was SENT!");
+
         PlayerInterruption message = new PlayerInterruption();
         message.action = action;
         message.target = target;

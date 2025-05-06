@@ -89,10 +89,6 @@ def directable(state: State):
 
         CURRENT CONVERSATION:
         {state['previous_conversations']}
-
-        Provide your response in two parts:
-        1. MESSAGE: The exact words you will say.
-        2. REASONING: A very brief explanation (1-2 sentences) of your thought process.
         """
     )
 
@@ -100,7 +96,7 @@ def directable(state: State):
 
     print("directable response:", response)
 
-    return {"message": response["message"]}
+    return {"message": response}
 
 directable_workflow = StateGraph(State)
 
@@ -141,7 +137,7 @@ class ScriptedConversationMessage(BaseModel):
 async def directable_npc(websocket: WebSocket):
     await websocket.accept()
 
-    character: Character = None
+    character: Character
     location: str
     knowledge: str
     curriculum: str
@@ -172,13 +168,15 @@ async def directable_npc(websocket: WebSocket):
 
                 directable_agent = directable_workflow.compile()
 
+                print("directable agent info", character, location, knowledge, curriculum) # type: ignore
+
                 response = await asyncio.to_thread(
                     partial(directable_agent.invoke, {
-                        "character": character,
-                        "location": location,
+                        "character": character, # type: ignore
+                        "location": location, # type: ignore
                         "time": data.time,
-                        "knowledge": knowledge,
-                        "curriculum": curriculum,
+                        "knowledge": knowledge, # type: ignore
+                        "curriculum": curriculum, # type: ignore
                         "previous_conversations": conversation_history,
                         "previous_group_conversations": scripted_conversation_history
                     })
@@ -188,12 +186,12 @@ async def directable_npc(websocket: WebSocket):
 
                 await websocket.send_json({
                     "type": "response",
-                    "message": response["message"]
+                    "message": response["conversation"].message
                 })
 
                 conversation_history.append(ConversationHistoryItem(
-                    character=character.name,
-                    message=response["message"]
+                    character=character.name, # type: ignore
+                    message=response["conversation"].message
                 ))
                 continue
 
@@ -203,7 +201,7 @@ async def directable_npc(websocket: WebSocket):
                     time=data.time,
                     summary=data.summary
                 ))
-                print("Scripted conversation history:", scripted_conversation_history)
+                print("Scripted conversation history of", character.name, ":", scripted_conversation_history) # type: ignore
                 continue
 
             elif message_type == "get_all_conversation_history":

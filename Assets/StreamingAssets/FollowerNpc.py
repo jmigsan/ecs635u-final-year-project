@@ -30,7 +30,7 @@ class ConversationHistoryItem(BaseModel):
 
 class State(TypedDict):
     character: Character
-    location: str
+    location: str # unused but long to remove
     time: str
     knowledge: str
     curriculum: str
@@ -39,6 +39,7 @@ class State(TypedDict):
     language: str
     proficiency: str
     native: str
+    message: Optional[ConversationMessage]
 
 structured_llm = llm.with_structured_output(ConversationMessage)
 
@@ -48,7 +49,7 @@ def follower(state: State):
         **SYSTEM PROMPT**
 
         **1. Your Identity & Core Context:**
-        *   **You are Avery:** The cheerful, friendly, and enthusiastic 21-year-old daughter of the baker in the peaceful coastal town of Sorano. You are an NPC in a video game.
+        *   **You are {state['character'].name}:** The cheerful, friendly, and enthusiastic 21-year-old daughter of the baker in the peaceful coastal town of Sorano. You are an NPC in a video game.
         *   **Your Role with the Player:** The player, {state['player']}, is staying at your family's bakery for the summer. They are helping out because your mother recently had a baby. You know their mother and your mother were childhood best friends here in Sorano. You genuinely like {state['player']} and enjoy having them around.
         *   **Your Personality:** Be consistently upbeat, welcoming, helpful, and happy to chat. You're excited to show {state['player']} around and share your town. You have a naturally casual and friendly vibe.
         *   **Bilingualism:** You are fluent in both {state['language']} (the town's primary language) and {state['native']} (the player's native language, English).
@@ -58,7 +59,6 @@ def follower(state: State):
         *   **Language Goal:** They are a native {state['native']} speaker trying to learn {state['language']}. Their current proficiency is {state['proficiency']}.
 
         **3. Current Situation:**
-        *   **Location:** {state['location']}
         *   **Time:** {state['time']}
 
         **4. Key Knowledge & Potential Conversation Topics:**
@@ -76,7 +76,7 @@ def follower(state: State):
             *   Example: "You should try the *pain au chocolat*! That's what we call chocolate croissants in {state['language']}. They're my favourite!"
 
         **6. Interaction Style:**
-        *   **Conversational & Natural:** Use conversational turns. Ask follow-up questions. Share brief, relevant anecdotes or personal thoughts (as Avery).
+        *   **Conversational & Natural:** Use conversational turns. Ask follow-up questions. Share brief, relevant anecdotes or personal thoughts (as {state['character'].name}).
         *   **Casual Tone:** Use contractions (like "it's", "don't", "you're"). Avoid lecturing. Keep descriptions concise.
         *   **Active Listening:** Respond directly to what the player says. If their request is unclear, ask for clarification in a friendly way.
 
@@ -93,11 +93,7 @@ def follower(state: State):
         **9. Conversation History:**
         {state['previous_conversations']}
 
-        Provide your response in two parts:
-        1. MESSAGE: The exact words Avery would say to {state['player']}
-        2. REASONING: A very brief explanation (1-2 sentences) of your thought process.
-
-        **Avery's next line:**
+        **{state['character'].name}'s next line:**
         """
     )
 
@@ -105,7 +101,7 @@ def follower(state: State):
 
     print("follower response:", response)
 
-    return {"message": response["message"]}
+    return {"message": response}
 
 follower_workflow = StateGraph(State)
 
@@ -115,21 +111,25 @@ follower_workflow.add_edge(START, "follower")
 follower_workflow.add_edge("follower", END)
 
 class FirstConversationState(TypedDict):
+    character: Character
     language: str
     player: str
     proficiency: str
     native: str
     newwords: str
+    message: Optional[ConversationMessage]
 
 def first_conversation(state: FirstConversationState):
+    print("State received by first_conversation:", state)
+
     prompt = textwrap.dedent(
         f"""
         **Character & Scenario Setup:**
 
-        *   **Your Role:** You are Avery, the cheerful and friendly 21-year-old daughter of the baker in the coastal town of Sorano. You are bilingual, fluent in both {state['language']} (the town's language) and {state['native']} (the player's language).
+        *   **Your Role:** You are {state['character'].name}, the cheerful and friendly 21-year-old daughter of the baker in the coastal town of Sorano. You are bilingual, fluent in both {state['language']} (the town's language) and {state['native']} (the player's language).
         *   **Player:** The player's name is {state['player']}. They are a newcomer to Sorano, a native {state['native']} speaker with {state['proficiency']} proficiency in {state['language']}.
         *   **Background:** {state['player']} is staying at your family's bakery for the summer to help out because your mother recently had a baby. This job was arranged by {state['player']}'s uncle. Your mother and {state['player']}'s mother were childhood best friends in Sorano.
-        *   **Setting:** The scene begins just as {state['player']} has arrived at the Sorano train station, and you, Avery, are meeting them there. Sorano is a fictional coastal town where {state['language']} is the primary language spoken.
+        *   **Setting:** The scene begins just as {state['player']} has arrived at the Sorano train station, and you, {state['character'].name}, are meeting them there. Sorano is a fictional coastal town where {state['language']} is the primary language spoken.
 
         **Your Task & Dialogue Requirements:**
 
@@ -147,13 +147,11 @@ def first_conversation(state: FirstConversationState):
                 *   Briefly explain its meaning simply, like connecting it to something they can see or will experience soon. *Example for 'hello' (if it were a word): "In Sorano, we say 'Bonjour'! That means 'hello' in {state['native']}. So, 'Bonjour, {state['player']}!' It's how everyone greets each other here."*
             6.  **Mention the Diary:** Towards the end of your initial conversation, tell {state['player']} about a special item: a diary their mother kept as a child in Sorano. Explain that your mother held onto it all these years and wants {state['player']} to have it. Mention you'll give it to them soon, maybe once they're settled at the bakery.
 
+        BE CONCISE
+
         **Constraint:**
 
-        *   **Dialogue Only:** Your *entire* output must consist *only* of the words Avery would say. Do not include any actions, descriptions, stage directions, character thoughts, or narrative text in parentheses or otherwise. Start speaking immediately as Avery.
-
-        Provide your response in two parts:
-        1. MESSAGE: The exact words Avery would say to {state['player']}
-        2. REASONING: A very brief explanation (1-2 sentences) of your thought process.
+        *   **Dialogue Only:** Your *entire* output must consist *only* of the words {state['character'].name} would say. Do not include any actions, descriptions, stage directions, character thoughts, or narrative text in parentheses or otherwise. Start speaking immediately as {state['character'].name}.
         """
     )
     
@@ -161,9 +159,9 @@ def first_conversation(state: FirstConversationState):
 
     print("first conversation:", response)
 
-    return {"message": response["message"]}
+    return {"message": response}
 
-first_conversation_workflow = StateGraph(State)
+first_conversation_workflow = StateGraph(FirstConversationState)
 
 first_conversation_workflow.add_node("first_conversation", first_conversation)
 
@@ -202,8 +200,8 @@ class UserMessage(BaseModel):
 async def follower_npc(websocket: WebSocket):
     await websocket.accept()
 
-    character: Character = None
-    location: str
+    character: Character
+    location: str # unused but dont want to refactor this rn
     knowledge: str
     curriculum: str
     player: str
@@ -220,6 +218,7 @@ async def follower_npc(websocket: WebSocket):
             message_type = raw_data.get("type", "")
 
             if message_type == "initialise_follower":
+                print("got initialise_follower")
                 data = InitialiseFollower(**raw_data)
                 character = data.character
                 location = data.location
@@ -230,6 +229,9 @@ async def follower_npc(websocket: WebSocket):
                 proficiency = data.proficiency
                 native = data.native
                 newwords = data.newwords
+
+                print("init follower values:", character, location, knowledge, curriculum, player, language, proficiency, native, newwords)
+                print("newwords", newwords)
                 continue
                 
             elif message_type == "user_message":
@@ -242,49 +244,67 @@ async def follower_npc(websocket: WebSocket):
 
                 follower_agent = follower_workflow.compile()
 
+                print("follower agent info", character, knowledge, curriculum, player, language, proficiency, native) # type: ignore
+                print("follower name", character.name) # type: ignore
+
                 response = await asyncio.to_thread(
                     partial(follower_agent.invoke, {
-                        "character": character,
-                        "location": location,
+                        "character": character, # type: ignore
                         "time": data.time,
-                        "knowledge": knowledge,
-                        "curriculum": curriculum,
+                        "knowledge": knowledge, # type: ignore
+                        "curriculum": curriculum, # type: ignore
                         "previous_conversations": conversation_history,
                         "player": data.player,
-                        "language": language,
-                        "proficiency": proficiency,
-                        "native": native
+                        "language": language, # type: ignore
+                        "proficiency": proficiency, # type: ignore
+                        "native": native # type: ignore
                     })
                 )
 
                 print(f"Follower agent response:", response)
 
+                generated_message_object: Optional[ConversationMessage] = response.get("message")
+
+                message_content: str
+                if generated_message_object is not None:
+                    message_content = generated_message_object.message
+                    print(f"LLM successfully returned structured message.")
+                else:
+                    message_content = "I'm sorry, I didn't hear you. Can you say that again?"
+                    print(f"LLM structured output failed. Using fallback message.")
+
                 await websocket.send_json({
                     "type": "response",
-                    "message": response["message"]
+                    "message": message_content
                 })
 
                 conversation_history.append(ConversationHistoryItem(
-                    character=character.name,
-                    message=response["message"]
+                    character=character.name, # type: ignore
+                    message=response["message"].message
                 ))
                 continue
 
             elif message_type == "first_conversation":
                 first_conversation_agent = first_conversation_workflow.compile()
+                
                 response = await asyncio.to_thread(
                     partial(first_conversation_agent.invoke, {
-                        "language": language,
-                        "player": player,
-                        "proficiency": proficiency,
-                        "native": native,
-                        "newwords": newwords
+                        "character": character, # type: ignore
+                        "language": language, # type: ignore
+                        "player": player, # type: ignore
+                        "proficiency": proficiency, # type: ignore
+                        "native": native, # type: ignore
+                        "newwords": newwords, # type: ignore
+                        "message": None
                     })
                 )
 
+                print(f"First conversation response:", response)
+                print(f"Fc message message", response["message"].message)
+
                 await websocket.send_json({
                     "type": "first_conversation",
-                    "message": response["message"]
+                    "message": response["message"].message
                 })
                 continue
 

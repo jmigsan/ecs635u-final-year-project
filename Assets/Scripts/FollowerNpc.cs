@@ -17,12 +17,12 @@ public class FollowerNpc : MonoBehaviour
 
     [Header("Settings")]
     public string voice = "en-GB-SoniaNeural";
-    public float followDistance = 3f;
+    public float followDistance = 5f;
     public float maxHearingDistance = 10f;
 
     NavMeshAgent agent;
     Transform player;
-    Animator animator;
+    // Animator animator;
     AudioSource audioSource;
     TextMeshPro subs;
     Transform currentTalkTarget;
@@ -35,11 +35,16 @@ public class FollowerNpc : MonoBehaviour
         player = PlayerInfoManager.Instance.GetTransform();
         followerNpcNetworkManager = GetComponent<FollowerNpcNetworkManager>();
         agent = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>();
+        // animator = GetComponent<Animator>();
         audioSource = GetComponent<AudioSource>();
         subs = transform.Find("Subs/Text").GetComponent<TextMeshPro>();
         subs.text = "";
         PlayerMicrophone.Instance.PlayerIsTalking += HandlePlayerIsTalking;
+
+        Debug.Log("follower here");
+        Invoke("InitialiseFollower", 5f);
+        Debug.Log("And here");
+        Invoke("FirstConversation", 8f);
     }
 
     void OnDestroy()
@@ -79,13 +84,13 @@ public class FollowerNpc : MonoBehaviour
         
         if (distanceToPlayer > followDistance)
         {
-            animator.SetBool("Walk", true);
+            // animator.SetBool("Walk", true);
             Vector3 followPosition = playerTransform.position - (playerTransform.forward * followDistance);
             agent.SetDestination(followPosition);
         }
         else
         {
-            animator.SetBool("Walk", false);
+            // animator.SetBool("Walk", false);
             agent.ResetPath();
         }
     }
@@ -147,7 +152,7 @@ public class FollowerNpc : MonoBehaviour
         TtsQuery query = new TtsQuery { words = message, voice = voice };
         string jsonQuery = JsonUtility.ToJson(query);
 
-        using (UnityWebRequest www = new UnityWebRequest("http://127.0.0.1:8003/tts", "POST"))
+        using (UnityWebRequest www = new UnityWebRequest("http://127.0.0.1:8000/tts", "POST"))
         {
             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonQuery);
             www.uploadHandler = new UploadHandlerRaw(bodyRaw);
@@ -190,8 +195,26 @@ public class FollowerNpc : MonoBehaviour
         }
     }
 
-    public void FirstConversation()
+    void FirstConversation()
     {
+        Debug.Log("sending first convo");
         followerNpcNetworkManager.SendFirstConversation();   
+    }
+
+    void InitialiseFollower()
+    {
+        Debug.Log("Initialised Follower");
+        FollowerNpcNetworkManager.Character character = new FollowerNpcNetworkManager.Character
+        {
+            name = npcName,
+            age = age,
+            gender = gender,
+            occupation = occupation,
+            personality = personality,
+            backstory = backstory
+        };
+        Debug.Log("init follower" + character);
+
+        followerNpcNetworkManager.SendInitialiseFollower(character, "Sorano Train Station", "You have a book to give to the player.");
     }
 }

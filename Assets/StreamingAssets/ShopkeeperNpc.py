@@ -73,10 +73,6 @@ def shopkeeper(state: State):
 
         CURRENT CONVERSATION:
         {state['conversation']}
-
-        Provide your response in two parts:
-        1. MESSAGE: The exact words you will say.
-        2. REASONING: A very brief explanation (1-2 sentences) of your thought process.
         """
     )
 

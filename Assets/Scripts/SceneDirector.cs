@@ -10,6 +10,7 @@ public class SceneDirector : MonoBehaviour
     public List<DirectableNpc> npcsInArea = new List<DirectableNpc>();
     public string location = "Sorano";
 
+    [System.Serializable]
     public class ScheduleEntry
     {
         public string time;
@@ -32,10 +33,12 @@ public class SceneDirector : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
+        Debug.Log("Entered area");
         DirectableNpc npc = other.GetComponent<DirectableNpc>();
         
         if (npc != null && !npcsInArea.Contains(npc))
         {
+            Debug.Log($"NPC {npc.npcName} entered area");
             npcsInArea.Add(npc);
         }
     }
@@ -54,6 +57,7 @@ public class SceneDirector : MonoBehaviour
     {
         if (!directing && npcsInArea.Count >= requiredCharacterCount)
         {
+            Debug.Log("Ready to party!");
             bool allNpcsAreReady = true;
             foreach (DirectableNpc npc in npcsInArea)
             {
@@ -66,6 +70,7 @@ public class SceneDirector : MonoBehaviour
             
             if (allNpcsAreReady)
             {
+                Debug.Log("party starting");
                 directing = true;
                 _ = StartDirectionAsync();
             }
@@ -147,7 +152,7 @@ public class SceneDirector : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogError($"Error during StartDirection: {ex.Message}");
+            Debug.LogError($"Error during StartDirection: {ex}");
             directing = false;
         }
     }
@@ -166,7 +171,9 @@ public class SceneDirector : MonoBehaviour
             {
                 if(direction.words == "Conversation Complete")
                 {
+                    Debug.Log("Trying to release npcs");
                     ReleaseNpcs();
+                    Debug.Log("released npcs");
                     break;
                 }
             }
@@ -181,7 +188,7 @@ public class SceneDirector : MonoBehaviour
                 {
                     target = npcs[direction.target].GetTransform();
                 }
-                else if (direction.target == PlayerInfoManager.Instance.PlayerName)
+                else if (direction.target == PlayerInfoManager.Instance.PlayerName || direction.target.ToLower() == "player")
                 {
                     target = PlayerInfoManager.Instance.GetTransform();
                 }
@@ -211,6 +218,8 @@ public class SceneDirector : MonoBehaviour
         Debug.Log("Releasing all NPCs from SceneDirector");
 
         string summary = await sceneDirectorNetworkManager.SendGetDirectionHistorySummary();
+
+        Debug.Log($"convo summary {summary}");
 
         foreach (DirectableNpc npc in npcsInArea)
         {

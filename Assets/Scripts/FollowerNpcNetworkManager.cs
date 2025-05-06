@@ -126,10 +126,12 @@ public class FollowerNpcNetworkManager : MonoBehaviour
         public string language { get; set; }
         public string proficiency { get; set; }
         public string native { get; set; }
+        public string newwords { get; set; }
     }
 
     public async void SendInitialiseFollower(Character character, string location, string knowledge)
     {
+
         InitialiseFollower message = new InitialiseFollower();
         message.character = character;
         message.location = location;
@@ -139,8 +141,11 @@ public class FollowerNpcNetworkManager : MonoBehaviour
         message.language = PlayerInfoManager.Instance.Language;
         message.proficiency = PlayerInfoManager.Instance.Proficiency;
         message.native = PlayerInfoManager.Instance.Native;
+        message.newwords = PlayerInfoManager.Instance.NewWords;
 
         string json = JsonConvert.SerializeObject(message);
+
+        Debug.Log("Sending init follower" + json);
 
         await websocket.SendText(json);
         Debug.Log("Follower " + character.name + " sent initialise. JSON: " + json);
@@ -164,7 +169,7 @@ public class FollowerNpcNetworkManager : MonoBehaviour
         string json = JsonConvert.SerializeObject(message);
 
         await websocket.SendText(json);
-        Debug.Log("User message sent to directable. JSON: " + json);
+        Debug.Log("User message sent to follower. JSON: " + json);
     }
 
     public class FirstConversationMessage

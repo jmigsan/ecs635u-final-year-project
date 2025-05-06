@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: be98a7556ecbfd246adb4fa521d89929
+timeCreated: 1461348686
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 76098
+  packageName: VR Real World Wristwatch
+  packageVersion: 1.0
+  assetPath: Assets/Wristwatch/Models/Materials/MetalBlack.mat
+  uploadId: 146455

@@ -12,7 +12,7 @@
 
 import textwrap
 from typing_extensions import TypedDict
-from typing import Literal, Optional
+from typing import Literal, Optional, cast
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 import os
@@ -37,9 +37,15 @@ class Direction(BaseModel):
     target: str
     reasoning: str
 
+class Directions(BaseModel):
+    directions: list[Direction]
+
 class NpcConversationSummaries(BaseModel):
     character: str
     summary: str
+
+class Summaries(BaseModel):
+    summaries: list[NpcConversationSummaries]
 
 class PreviousNpcConversations(BaseModel):
     character: str
@@ -53,31 +59,29 @@ class State(TypedDict):
     purpose: str
     player: str
     directions: Optional[list[Direction]]
-    previous_npc_conversations: Optional[PreviousNpcConversations]
+    previous_npc_conversations: Optional[list[PreviousNpcConversations]]
     summaries: Optional[list[NpcConversationSummaries]]
     curriculum: str
 
-structured_summariser_llm = llm.with_structured_output(NpcConversationSummaries)
+structured_summariser_llm = llm.with_structured_output(Summaries)
 
 def summariser(state: State):
     prompt = textwrap.dedent(
         f"""
-        Summarise the conversations of each of these characters:
+        Summarise the conversations of each of these characters based on the provided history:
         {state['characters']}
 
         Here is their conversation histories:
-        {state['previous_npc_conversations']}
+        {state.get('previous_npc_conversations', 'No previous history provided.')}
         """)
-    
+
+    print("Summariser prompt:", prompt)
     response = structured_summariser_llm.invoke(prompt)
 
     print("summariser response:", response)
+    return {"summaries": response}
 
-    state["summaries"] = response
-
-    return state
-
-structured_director_llm = llm.with_structured_output(list[Direction])
+structured_director_llm = llm.with_structured_output(Directions)
 
 def director(state: State):
     prompt = textwrap.dedent(
@@ -104,8 +108,7 @@ def director(state: State):
         - Start with natural greetings and acknowledgment of each other
         - Progress to casual topics relevant to their location and daily lives
         - Gradually weave in key information related to the main purpose
-        - Create a natural conclusion or transition point
-        - Include 1-2 moments where the characters might notice or acknowledge a player's presence
+        - Create a natural conclusion
 
         RELATIONSHIP DYNAMICS:
         - Establish clear pre-existing relationships between characters through subtle references
@@ -125,6 +128,7 @@ def director(state: State):
         - Vary sentence length and complexity based on each character's personality
         - Create moments of humor, nostalgia, or mild disagreement to add depth
         - Maintain a peaceful, slice-of-life atmosphere throughout
+        - DO NOT target the player character.
 
         PLAYER'S LANGUAGE REQUIREMENTS:
         - {state['curriculum']}
@@ -134,6 +138,7 @@ def director(state: State):
         - Each line must include reasoning that explains the character's motivation or thought process
         - Lines should only contain spoken dialogue (no action descriptions in the dialogue)
         - Target each line to the appropriate character(s) being addressed
+        - DO NOT target multiple characters. If both characters are being addressed, only address one. Assume the other characters will hear it too.
 
         EXAMPLE EXCHANGE:
         [Character A - Sam]: Good morning, Eliza! Those fresh peaches look wonderful today.
@@ -146,7 +151,9 @@ def director(state: State):
         """
     )
 
-    response = structured_director_llm.invoke(prompt)
+    raw_response = structured_director_llm.invoke(prompt)
+    response_obj = cast(Directions, raw_response)
+    actual_directions = response_obj.directions
 
     completion_message = Direction(
         character="System",
@@ -155,15 +162,15 @@ def director(state: State):
         reasoning="Conversation is complete."
     )
     
-    response.append(completion_message)
+    actual_directions.append(completion_message)  # Append to the list
 
-    print("director response:", response)
+    print("director response:", actual_directions)
 
-    return {"directions": response}
+    return {"directions": actual_directions}
 
 begin_direction_workflow = StateGraph(State)
 
-begin_direction_workflow.add_node("summariser", director)
+begin_direction_workflow.add_node("summariser", summariser)
 begin_direction_workflow.add_node("director", director)
 
 begin_direction_workflow.add_edge(START, "summariser")
@@ -242,7 +249,9 @@ def player_interruption_director(state: State):
         """
     )
     
-    response = structured_director_llm.invoke(prompt)
+    raw_response = structured_director_llm.invoke(prompt)
+    response_obj = cast(Directions, raw_response)
+    actual_directions = response_obj.directions
     
     completion_message = Direction(
         character="System",
@@ -251,11 +260,11 @@ def player_interruption_director(state: State):
         reasoning="Conversation is complete."
     )
     
-    response.append(completion_message)
+    actual_directions.append(completion_message)
 
-    print("director response:", response)
+    print("director response:", actual_directions)
 
-    return {"player_interruption directions": response}
+    return {"directions": actual_directions}
 
 player_interruption_workflow = StateGraph(State)
 
@@ -268,6 +277,7 @@ player_interruption_workflow.add_edge("player_interruption_director", END)
 
 class SummariseConversationState(TypedDict):
     conversation_history: list[Direction]
+    summary: Optional[str]
 
 def summarise_conversation(state: SummariseConversationState):
     prompt = textwrap.dedent(
@@ -283,7 +293,7 @@ def summarise_conversation(state: SummariseConversationState):
 
     return {"summary": response.content}
 
-summarise_conversation_workflow = StateGraph(State)
+summarise_conversation_workflow = StateGraph(SummariseConversationState)
 
 summarise_conversation_workflow.add_node("summarise_conversation", summarise_conversation)
 
@@ -297,6 +307,7 @@ summarise_conversation_workflow.add_edge("summarise_conversation", END)
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import asyncio
 from functools import partial
+import json
 
 app = FastAPI()
 
@@ -307,7 +318,7 @@ class BeginSceneDirection(BaseModel):
     time: str
     purpose: str
     player: str
-    previously: Optional[list[PreviousNpcConversations]]
+    previously: Optional[str]
     curriculum: str
 
 class PlayerInterruption(BaseModel):
@@ -337,7 +348,7 @@ async def scene_director(websocket: WebSocket):
     time: str = ""
     purpose: str = ""
     player: str = ""
-    previously: Optional[list[PreviousNpcConversations]] = None
+    previously: Optional[str] = None
     curriculum: str = ""
 
     try:
@@ -346,6 +357,8 @@ async def scene_director(websocket: WebSocket):
             message_type = raw_data.get("type", "")
 
             if message_type == "begin_scene_direction":
+                print(raw_data)
+
                 data = BeginSceneDirection(**raw_data)
 
                 begin_scene_director_agent = begin_direction_workflow.compile()
@@ -377,6 +390,8 @@ async def scene_director(websocket: WebSocket):
                 print("Begin director response", directions)
 
                 direction_dicts = [direction.model_dump() for direction in directions]
+
+                print("begin direction dicts", direction_dicts)
                 
                 await websocket.send_json({
                     "type": "directions",
@@ -442,7 +457,8 @@ async def scene_director(websocket: WebSocket):
 
                 response = await asyncio.to_thread(
                     partial(summarise_conversation_agent.invoke, {
-                        "conversation_history": direction_history
+                        "conversation_history": direction_history,
+                        "summary": None
                     })
                 )
 
@@ -485,7 +501,7 @@ async def transcribe_audio(audio: UploadFile = File(...)) -> TranscribeResponse:
     }
 
     data = {
-        # "language": "tagalog",
+        "language": "japanese",
         "response_format": "json"
     }
     

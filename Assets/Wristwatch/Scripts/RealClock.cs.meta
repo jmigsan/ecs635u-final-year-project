@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: dbcdf53398c9324429fd0c818f9b4b0a
+timeCreated: 1479169754
+licenseType: Store
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 76098
+  packageName: VR Real World Wristwatch
+  packageVersion: 1.0
+  assetPath: Assets/Wristwatch/Scripts/RealClock.cs
+  uploadId: 146455

@@ -40,7 +40,7 @@ public class TESTBeginStoryTrigger160325 : MonoBehaviour
     private void TriggerStory()
     {
         Debug.Log("Begin Story trigger activated by S key or collision");
-        // NetworkManager.Instance.SendBeginStory();
+        NetworkManager.Instance.SendBeginStory();
         cafeCoupleGameManager1.SendBeginConversation();
         cafeCoupleGameManager2.SendBeginConversation();
         hasTriggered = true;
